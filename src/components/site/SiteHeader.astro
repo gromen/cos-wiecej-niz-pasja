@@ -1,0 +1,1054 @@
+---
+/**
+ * Shared floating header (Trybuna language). Owned by the main session –
+ * page agents should not edit it; restyle per page via the `tone` prop.
+ *
+ *  - A fixed, inset, rounded glass bar: hides on scroll down (past 80px), returns on scroll up.
+ *  - ≥48rem: inline links. <48rem: „Menu” button → full-screen modal <dialog> (focus trap,
+ *    Esc, inert page come free with showModal(); a popover would leave the page interactive).
+ *  - Height/offset tokens (--hdr-*) live in tokens.css so pages and sticky UI can clear the bar.
+ */
+import { COLLECTION_SIZE, socials } from '../../data/collection';
+
+interface Props {
+  /** 'red' on red pages, 'ink' on dark pages, 'paper' on white pages – tints the glass bar. */
+  tone?: 'red' | 'ink' | 'paper';
+  /** Section the page belongs to – a soft highlight; `aria-current` follows the actual URL. */
+  current?: 'start' | 'kolekcja';
+  /**
+   * The bar floats over the page's first screen, which already has enough top padding
+   * (e.g. the home kick-off). Default false: an in-flow spacer reserves the bar's room.
+   */
+  overlay?: boolean;
+}
+
+const { tone = 'ink', current, overlay = false } = Astro.props;
+
+const pages = [
+  { key: 'start', href: '/', label: 'Start' },
+  { key: 'kolekcja', href: '/kolekcja/', label: 'Kolekcja' },
+] as const;
+
+/** Trailing slash is optional (trailingSlash: 'ignore'), so compare without it. */
+const trim = (path: string): string => path.replace(/\/+$/, '') || '/';
+const here = trim(Astro.url.pathname);
+const isPage = (href: string): boolean => trim(href) === here;
+/** In the section but not on its index (e.g. a shirt detail under Kolekcja). */
+const inSection = (page: (typeof pages)[number]): boolean => current === page.key && !isPage(page.href);
+
+const links = [
+  { href: socials.instagram, label: 'Instagram' },
+  { href: socials.facebook, label: 'Facebook' },
+];
+
+const newTab = '(otwiera się w nowej karcie)';
+const sash = '★ Biała Gwiazda ★ mecz po meczu ★ koszulka po koszulce ';
+const star = '12,1.5 14.6,8.9 22.5,9.1 16.2,13.9 18.5,21.5 12,17 5.5,21.5 7.8,13.9 1.5,9.1 9.4,8.9';
+---
+
+{!overlay && <div class="site-header-spacer" aria-hidden="true"></div>}
+
+<!-- Skip the entrance when the page arrives through a cross-document view transition
+     (the bar is morphed by the transition then; a fade-in on top would flicker).
+     No showModal() (old Safari): flag it before first paint so the inline links stay visible. -->
+<script is:inline>
+  if (typeof HTMLDialogElement !== 'function' || typeof HTMLDialogElement.prototype.showModal !== 'function') {
+    document.documentElement.dataset.noDialog = '';
+  }
+  addEventListener(
+    'pagereveal',
+    (event) => {
+      if (event.viewTransition) document.documentElement.dataset.hdrStill = '';
+    },
+    { once: true },
+  );
+</script>
+
+<header class="site-header" data-tone={tone} data-site-header>
+  <a class="brand" href="/">
+    <svg class="brand__star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <polygon points={star}></polygon>
+    </svg>
+    <span class="brand__full">Coś więcej niż pasja</span>
+    <span class="brand__short" aria-hidden="true">CWNP</span>
+  </a>
+
+  <nav class="links" aria-label="Główna">
+    <ul>
+      {
+        pages.map((page) => (
+          <li>
+            <a
+              href={page.href}
+              aria-current={isPage(page.href) ? 'page' : undefined}
+              class:list={{ 'is-section': inSection(page) }}
+            >
+              {page.label}
+            </a>
+          </li>
+        ))
+      }
+      {
+        links.map((link, i) => (
+          <li class:list={['links__social', { 'links__first-social': i === 0 }]}>
+            <a href={link.href} rel="noopener" target="_blank">
+              {link.label}
+              <span aria-hidden="true">↗</span>
+              <span class="visually-hidden"> {newTab}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  <button
+    class="menu-button"
+    type="button"
+    aria-expanded="false"
+    aria-controls="site-menu"
+    data-menu-open
+  >
+    <span class="menu-button__label">Menu</span>
+    <span class="burger" aria-hidden="true"><span></span><span></span><span></span></span>
+  </button>
+</header>
+
+<dialog id="site-menu" class="site-menu" aria-label="Menu" data-site-menu>
+  <div class="menu__sweep" aria-hidden="true"></div>
+  <svg class="menu__bigstar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <polygon points={star}></polygon>
+  </svg>
+
+  <div class="menu__bar">
+    <span class="brand brand--menu" aria-hidden="true">
+      <svg class="brand__star" viewBox="0 0 24 24" focusable="false"><polygon points={star}></polygon></svg>
+      <span class="brand__full">Coś więcej niż pasja</span>
+      <span class="brand__short">CWNP</span>
+    </span>
+    <button class="menu-button menu-button--close" type="button" data-menu-close>
+      <span class="menu-button__label">Zamknij<span class="visually-hidden"> menu</span></span>
+      <span class="burger" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+  </div>
+
+  <nav class="menu__nav" aria-label="Menu główne">
+    <ol class="menu__pages">
+      {
+        pages.map((page, i) => (
+          <li style={`--i:${i}`}>
+            <a
+              href={page.href}
+              aria-current={isPage(page.href) ? 'page' : undefined}
+              class:list={{ 'is-section': inSection(page) }}
+            >
+              <span class="menu__index" aria-hidden="true">
+                {String(i + 1).padStart(2, '0')}
+                {isPage(page.href) && <span class="menu__here"> · tu jesteś</span>}
+              </span>
+              <span class="menu__label">{page.label}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="menu__foot">
+      <ul class="menu__socials">
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.href} rel="noopener" target="_blank">
+                {link.label}
+                <span aria-hidden="true">↗</span>
+                <span class="visually-hidden"> {newTab}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="menu__count">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polygon points={star}></polygon></svg>
+        {COLLECTION_SIZE} koszulek w kolekcji
+      </p>
+    </div>
+  </nav>
+
+  <div class="menu__sash" aria-hidden="true">
+    <span>{sash.repeat(4)}</span>
+  </div>
+</dialog>
+
+<style>
+  /* ───────────── Spacer (non-overlay pages) ───────────── */
+  .site-header-spacer {
+    block-size: var(--hdr-space);
+  }
+
+  /* ───────────── Floating bar ───────────── */
+  .site-header {
+    --hdr-fg: var(--c-white);
+    --hdr-glass: rgb(5 15 26 / 0.62);
+    --hdr-solid: var(--c-ink);
+    --hdr-border: rgb(250 250 250 / 0.14);
+    --hdr-star: var(--c-red-bright);
+    --hdr-current-fg: var(--c-ink);
+
+    position: fixed;
+    /* Above the page's fixed grain (z 50), below .skip-link (z 100); the menu dialog is in the top layer. */
+    z-index: 60;
+    inset-block-start: var(--hdr-top);
+    inset-inline: max(var(--hdr-inset), env(safe-area-inset-left, 0px))
+      max(var(--hdr-inset), env(safe-area-inset-right, 0px));
+    container: hdr / inline-size;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-inline-size: 80rem;
+    block-size: var(--hdr-h);
+    margin-inline: auto;
+    padding-inline: 0.9rem 0.4rem;
+    border: 1px solid var(--hdr-border);
+    border-radius: 1rem;
+    background: var(--hdr-solid);
+    color: var(--hdr-fg);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.08) inset,
+      0 12px 32px -14px rgb(5 15 26 / 0.6);
+    view-transition-name: site-header;
+    translate: 0 0;
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+      background: var(--hdr-glass);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      backdrop-filter: blur(16px) saturate(1.5);
+    }
+
+    &[data-tone='red'] {
+      --hdr-glass: rgb(198 16 46 / 0.7);
+      --hdr-solid: var(--c-red);
+      --hdr-border: rgb(250 250 250 / 0.24);
+      --hdr-star: var(--c-white);
+      --hdr-current-fg: var(--c-red);
+    }
+
+    &[data-tone='paper'] {
+      --hdr-fg: var(--c-ink);
+      --hdr-glass: rgb(250 250 250 / 0.74);
+      --hdr-solid: var(--c-white);
+      --hdr-border: rgb(5 15 26 / 0.12);
+      --hdr-star: var(--c-red);
+      --hdr-current-fg: var(--c-white);
+    }
+
+    a {
+      text-decoration: none;
+    }
+
+    @media (min-width: 48rem) {
+      padding-inline: 1.25rem 0.6rem;
+      border-radius: 1.1rem;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: translate 420ms var(--ease-out);
+      animation: hdr-in 700ms var(--ease-out) 120ms both;
+
+      /* Fully out of view: its own height + the inset above it + room for the shadow. */
+      &.is-hidden:not(:focus-within) {
+        translate: 0 calc(-100% - var(--hdr-top) - 1.5rem);
+        transition-duration: 300ms;
+        transition-timing-function: var(--ease-in-out);
+      }
+
+      :global(:root[data-hdr-still]) & {
+        animation: none;
+      }
+    }
+
+    /* Set just before a view-transition snapshot: snap into view so the bar isn't captured off-screen. */
+    &[data-instant] {
+      transition: none;
+    }
+  }
+
+  @keyframes hdr-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.75rem) scale(0.98);
+    }
+  }
+
+  /* ───────────── Brand ───────────── */
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-inline-size: 0;
+    margin-inline-end: auto;
+    padding-block: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+    font-stretch: 75%;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    @media (min-width: 48rem) {
+      font-size: 1.1rem;
+    }
+
+    .brand__short {
+      display: none;
+    }
+
+    /* Very narrow bars (< 240px, i.e. viewports under ~290px): star + „CWNP”; the full name stays for assistive tech. */
+    @container hdr (width < 15rem) {
+      .brand__full {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+
+      .brand__short {
+        display: inline;
+        letter-spacing: 0.06em;
+      }
+    }
+  }
+
+  .brand__star {
+    flex: none;
+    inline-size: 1.35em;
+    block-size: 1.35em;
+    fill: var(--hdr-star, var(--c-white));
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: rotate 600ms var(--ease-out);
+
+      .brand:hover & {
+        rotate: 72deg;
+      }
+    }
+  }
+
+  /* ───────────── Desktop links ───────────── */
+  .links {
+    display: none;
+
+    ul {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35em;
+      min-block-size: 2.5rem;
+      padding-inline: 0.9rem;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition:
+        background-color var(--dur-fast),
+        color var(--dur-fast);
+
+      &:hover {
+        background: color-mix(in srgb, currentColor 14%, transparent);
+      }
+
+      &[aria-current='page'] {
+        background: var(--hdr-fg);
+        color: var(--hdr-current-fg);
+        font-weight: 700;
+      }
+
+      /* Section (e.g. a shirt under Kolekcja): a ring, not the filled pill – it is still a link out. */
+      &.is-section {
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 55%, transparent);
+        font-weight: 700;
+      }
+    }
+
+    .links__first-social {
+      margin-inline-start: 0.5rem;
+      padding-inline-start: 0.75rem;
+      border-inline-start: 1px solid var(--hdr-border);
+    }
+
+    @media (min-width: 48rem) {
+      display: block;
+    }
+
+    /* No modal dialog support: keep the page links inline on mobile (socials only from 48rem). */
+    :global(:root[data-no-dialog]) & {
+      display: block;
+
+      .links__social {
+        display: none;
+
+        @media (min-width: 48rem) {
+          display: list-item;
+        }
+      }
+    }
+  }
+
+  /* ───────────── Menu button (hamburger ⇄ X) ───────────── */
+  .menu-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.6rem;
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+    padding: 0 0.85rem;
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+    border-radius: 0.75rem;
+    background: transparent;
+    color: inherit;
+    font: 700 var(--fs-xs) / 1 var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:hover {
+      background: color-mix(in srgb, currentColor 12%, transparent);
+    }
+
+    @media (min-width: 48rem) {
+      &:not(.menu-button--close) {
+        display: none;
+      }
+    }
+
+    :global(:root[data-no-dialog]) &:not(.menu-button--close) {
+      display: none;
+    }
+  }
+
+  /* Only the bars on the tightest bars – the label is then announced via visually-hidden text. */
+  @container hdr (width < 21rem) {
+    .menu-button {
+      padding-inline: 0;
+      justify-content: center;
+    }
+
+    .menu-button__label {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  .burger {
+    display: grid;
+    gap: 4px;
+    inline-size: 1.1rem;
+
+    span {
+      display: block;
+      block-size: 2px;
+      border-radius: 2px;
+      background: currentColor;
+      transform-origin: center;
+    }
+
+    /* Stagger widths: a terrace-step hamburger rather than three equal bars. */
+    span:nth-child(2) {
+      inline-size: 70%;
+      justify-self: end;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      span {
+        transition:
+          transform 320ms var(--ease-out),
+          opacity 200ms,
+          inline-size 320ms var(--ease-out);
+      }
+    }
+  }
+
+  /* X state on the dialog's close button. */
+  .menu-button--close .burger span {
+    &:nth-child(1) {
+      transform: translateY(6px) rotate(45deg);
+    }
+
+    &:nth-child(2) {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+
+    &:nth-child(3) {
+      transform: translateY(-6px) rotate(-45deg);
+    }
+  }
+
+  /* ───────────── Mobile menu (full-screen modal dialog) ───────────── */
+  .site-menu {
+    position: fixed;
+    /* Stretch via insets (auto size overrides the UA's fit-content) – no 100% height, which
+       iOS resolves against the large viewport. */
+    inset: 0;
+    inline-size: auto;
+    block-size: auto;
+    max-inline-size: none;
+    max-block-size: none;
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    border: 0;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    isolation: isolate;
+    background: var(--c-red);
+    color: var(--c-white);
+
+    &[open] {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto 1fr;
+    }
+
+    &::backdrop {
+      background: transparent;
+    }
+
+    /* Light grain, local to the overlay (the page's fixed grain sits under the top layer). */
+    &::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.09;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+
+    a {
+      text-decoration: none;
+    }
+
+    /* Never rendered inline where <dialog> is unsupported (old Safari shows its contents). */
+    :global(:root[data-no-dialog]) & {
+      display: none;
+    }
+  }
+
+  /* Page scroll lock while the menu is up – the stable scrollbar gutter prevents a shift. */
+  :global(:root:has(.site-menu[open])) {
+    overflow: hidden;
+  }
+
+  /* Mirrors the floating bar exactly, so the burger appears to morph in place. */
+  .menu__bar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    block-size: var(--hdr-h);
+    margin: var(--hdr-top) max(var(--hdr-inset), env(safe-area-inset-right, 0px)) 0
+      max(var(--hdr-inset), env(safe-area-inset-left, 0px));
+    padding-inline: calc(0.9rem + 1px) calc(0.4rem + 1px);
+    container: hdr / inline-size;
+
+    .brand--menu {
+      --hdr-star: var(--c-white);
+    }
+  }
+
+  .menu__sweep {
+    position: fixed;
+    z-index: 1;
+    inset-block: -20%;
+    inset-inline-start: 0;
+    inline-size: 42vmax;
+    background: var(--c-white);
+    transform: translateX(-80vmax) skewX(-18deg);
+    pointer-events: none;
+  }
+
+  .menu__bigstar {
+    position: fixed;
+    z-index: -1;
+    inset-inline-end: -30vmin;
+    inset-block-end: 4svh;
+    inline-size: 90vmin;
+    fill: none;
+    stroke: var(--c-white);
+    stroke-width: 0.12;
+    opacity: 0.2;
+    pointer-events: none;
+  }
+
+  .menu__nav {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2.5rem;
+    padding: clamp(2rem, 8svh, 4rem) var(--gutter) calc(clamp(5rem, 16svh, 8rem));
+  }
+
+  .menu__pages {
+    display: grid;
+    gap: clamp(1rem, 4svh, 2rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    a {
+      position: relative;
+      display: grid;
+      justify-items: start;
+      gap: 0.35rem;
+      inline-size: fit-content;
+    }
+
+    a:hover .menu__label,
+    a[aria-current='page'] .menu__label {
+      text-decoration: underline;
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.1em;
+    }
+
+    a[aria-current='page'] .menu__index,
+    a.is-section .menu__index {
+      color: var(--c-gold);
+    }
+  }
+
+  .menu__index {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .menu__label {
+    display: block;
+    font-family: var(--font-display);
+    /* Sized so „KOLEKCJA” at full stretch fits 320–767px with the gutters. */
+    font-size: min(13.2vw, 6.5rem);
+    font-weight: 900;
+    font-stretch: 115%;
+    line-height: 0.86;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .menu__foot {
+    display: grid;
+    gap: 1.25rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .menu__socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+      min-block-size: 2.75rem;
+      padding-inline: 1rem;
+      border: 1px solid rgb(250 250 250 / 0.5);
+      border-radius: 999px;
+      font-weight: 700;
+      transition:
+        background-color var(--dur-fast),
+        color var(--dur-fast);
+
+      &:hover {
+        background: var(--c-white);
+        color: var(--c-red);
+      }
+    }
+  }
+
+  .menu__count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: rgb(250 250 250 / 0.85);
+
+    svg {
+      inline-size: 1.1em;
+      block-size: 1.1em;
+      fill: var(--c-gold);
+    }
+  }
+
+  .menu__sash {
+    position: fixed;
+    z-index: 1;
+    inset-inline: -10%;
+    inset-block-end: calc(3svh + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    block-size: 2.5rem;
+    background: var(--c-white);
+    color: var(--c-red);
+    transform: rotate(-7deg);
+    pointer-events: none;
+
+    span {
+      flex: none;
+      padding-inline: 1rem;
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  }
+
+  /* ───────────── Menu motion (opt-in) ───────────── */
+  @media (prefers-reduced-motion: no-preference) {
+    .site-menu[open] {
+      animation: menu-in 520ms var(--ease-out) both;
+
+      .menu__sweep {
+        animation: menu-sweep 900ms var(--ease-in-out) 60ms both;
+      }
+
+      .menu__bigstar {
+        animation: menu-star 1100ms var(--ease-out) 150ms both;
+      }
+
+      .menu__bar .burger span {
+        animation: burger-x 420ms var(--ease-out) 60ms backwards;
+      }
+
+      .menu__index {
+        animation: menu-fade 500ms var(--ease-out) calc(260ms + var(--i) * 110ms) both;
+      }
+
+      .menu__label {
+        animation: menu-stretch 820ms cubic-bezier(0.2, 1.2, 0.35, 1) calc(240ms + var(--i) * 110ms) both;
+      }
+
+      .menu__foot {
+        animation: menu-fade 500ms var(--ease-out) 520ms both;
+      }
+
+      .menu__sash {
+        animation: menu-sash 800ms var(--ease-out) 320ms both;
+      }
+    }
+
+    /* Closing: quick reverse of the curtain; the content just goes with it. */
+    .site-menu[open][data-state='closing'] {
+      animation: menu-out 240ms var(--ease-in-out) both;
+
+      .menu__bar .burger span {
+        animation: none;
+      }
+    }
+  }
+
+  /* The curtain drops with a slanted leading edge (the sash angle), then squares off. */
+  @keyframes menu-in {
+    from {
+      clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+    }
+    55% {
+      clip-path: polygon(0 0, 100% 0, 100% 62%, 0 88%);
+    }
+    to {
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    }
+  }
+
+  @keyframes menu-out {
+    from {
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    }
+    to {
+      clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+    }
+  }
+
+  @keyframes menu-sweep {
+    to {
+      transform: translateX(160vmax) skewX(-18deg);
+    }
+  }
+
+  @keyframes menu-star {
+    from {
+      opacity: 0;
+      transform: rotate(-120deg) scale(0.4);
+    }
+  }
+
+  @keyframes menu-stretch {
+    from {
+      opacity: 0;
+      transform: translateY(35%) scaleY(1.3);
+      font-stretch: 62%;
+      font-weight: 300;
+    }
+    50% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      font-stretch: 115%;
+      font-weight: 900;
+    }
+  }
+
+  @keyframes menu-fade {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+  }
+
+  @keyframes menu-sash {
+    from {
+      transform: translateX(-110%) rotate(-7deg);
+    }
+  }
+
+  /* The close button arrives as a hamburger and folds into the X. */
+  @keyframes burger-x {
+    from {
+      transform: none;
+      opacity: 1;
+    }
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  const menu = document.querySelector<HTMLDialogElement>('[data-site-menu]');
+  const openButton = header?.querySelector<HTMLButtonElement>('[data-menu-open]');
+  const closeButton = menu?.querySelector<HTMLButtonElement>('[data-menu-close]');
+  const firstDesktopLink = header?.querySelector<HTMLAnchorElement>('.links a');
+  const root = document.documentElement;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const desktop = matchMedia('(min-width: 48rem)');
+
+  /* ─────────── Hide on scroll down, show on scroll up ─────────── */
+  const SHOW_ABOVE = 80;
+  const TOLERANCE = 6;
+  let lastY = Math.max(0, scrollY);
+  let ticking = false;
+
+  const setHidden = (hidden: boolean): void => {
+    if (!header) return;
+    header.classList.toggle('is-hidden', hidden);
+    // Off-screen bar: out of the tab order and the a11y tree. It is never hidden while it holds
+    // focus (see `pinned`), so the :focus-within reveal still applies.
+    header.inert = hidden;
+    if (hidden) root.dataset.header = 'hidden';
+    else delete root.dataset.header;
+  };
+
+  const update = (): void => {
+    ticking = false;
+    const maxY = Math.max(0, root.scrollHeight - innerHeight);
+    // Rubber-band bounce past the bottom (iOS) reports a scrollY beyond the end and back: ignore it.
+    if (scrollY + innerHeight >= root.scrollHeight && scrollY > SHOW_ABOVE) {
+      lastY = maxY;
+      return;
+    }
+    const y = Math.min(Math.max(0, scrollY), maxY);
+    const delta = y - lastY;
+    const pinned =
+      y <= SHOW_ABOVE || reduceMotion.matches || Boolean(menu?.open) || Boolean(header?.matches(':focus-within'));
+    if (pinned) {
+      setHidden(false);
+      lastY = y;
+      return;
+    }
+    // Ignore jitter (momentum tails, toolbar resize) until the movement is deliberate.
+    if (Math.abs(delta) < TOLERANCE) return;
+    setHidden(delta > 0);
+    lastY = y;
+  };
+
+  /** Arrival (load, bfcache restore, scroll restoration): take the current position as the baseline. */
+  const resync = (): void => {
+    lastY = Math.max(0, scrollY);
+    delete header?.dataset.instant;
+    setHidden(false);
+  };
+
+  if (header) {
+    addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+      },
+      { passive: true },
+    );
+    header.addEventListener('focusin', () => setHidden(false));
+    reduceMotion.addEventListener('change', update);
+    addEventListener('pageshow', resync);
+    addEventListener('load', resync, { once: true });
+
+    // Outgoing cross-document view transition: put the bar in view instantly, so its old
+    // snapshot isn't captured off-screen (it would slide in from above).
+    addEventListener('pageswap', (event) => {
+      if (!(event as Event & { viewTransition?: unknown }).viewTransition) return;
+      header.dataset.instant = '';
+      setHidden(false);
+    });
+
+    update();
+  }
+
+  /* ─────────── Mobile menu ─────────── */
+  const canModal = typeof menu?.showModal === 'function';
+
+  if (header && menu && openButton && closeButton && canModal) {
+    let fallback = 0;
+    let scrollTopOnClose = false;
+
+    /*
+     * Scroll lock. `overflow: hidden` on :root (CSS) works from iOS 16; older iOS keeps scrolling
+     * the page behind, so pin <body> there (and restore the position). overscroll-behavior shipped
+     * in the same Safari release – a clean feature proxy.
+     */
+    const needsBodyLock = !CSS.supports('overscroll-behavior', 'contain');
+    let lockedY = 0;
+
+    const lockScroll = (): void => {
+      if (!needsBodyLock) return;
+      lockedY = scrollY;
+      Object.assign(document.body.style, {
+        position: 'fixed',
+        insetBlockStart: `-${lockedY}px`,
+        insetInline: '0',
+        overflow: 'hidden',
+      });
+    };
+
+    const unlockScroll = (): void => {
+      if (!needsBodyLock) return;
+      const { style } = document.body;
+      style.removeProperty('position');
+      style.removeProperty('inset-block-start');
+      style.removeProperty('inset-inline');
+      style.removeProperty('overflow');
+      scrollTo({ top: lockedY, behavior: 'instant' });
+      lastY = lockedY;
+    };
+
+    const finishClose = (): void => {
+      window.clearTimeout(fallback);
+      menu.removeEventListener('animationend', onCloseEnd);
+      if (menu.open) menu.close();
+    };
+
+    const onCloseEnd = (event: AnimationEvent): void => {
+      if (event.target === menu) finishClose();
+    };
+
+    const openMenu = (): void => {
+      if (menu.open) return;
+      delete menu.dataset.state;
+      setHidden(false);
+      lockScroll();
+      menu.showModal();
+      openButton.setAttribute('aria-expanded', 'true');
+    };
+
+    /** Animated (quick reverse) unless reduced motion or `instant` (e.g. before navigating). */
+    const closeMenu = (instant = false): void => {
+      if (!menu.open) return;
+      if (instant || reduceMotion.matches) {
+        finishClose();
+        return;
+      }
+      if (menu.dataset.state === 'closing') return;
+      menu.dataset.state = 'closing';
+      menu.addEventListener('animationend', onCloseEnd);
+      fallback = window.setTimeout(finishClose, 400);
+    };
+
+    openButton.addEventListener('click', openMenu);
+    closeButton.addEventListener('click', () => closeMenu());
+
+    // Esc: run the closing animation instead of the instant native close.
+    menu.addEventListener('cancel', (event) => {
+      // Not cancelable (e.g. repeated Esc without user activation): the browser closes it now.
+      if (!event.cancelable) return;
+      event.preventDefault();
+      closeMenu();
+    });
+
+    // Every path out (button, Esc, link, browser-forced close, viewport → desktop) lands here.
+    menu.addEventListener('close', () => {
+      window.clearTimeout(fallback);
+      menu.removeEventListener('animationend', onCloseEnd);
+      delete menu.dataset.state;
+      openButton.setAttribute('aria-expanded', 'false');
+      unlockScroll();
+      // The menu button is display:none from 48rem – hand focus to the inline links instead of <body>.
+      if (desktop.matches) firstDesktopLink?.focus({ preventScroll: true });
+      else openButton.focus({ preventScroll: true });
+      if (scrollTopOnClose) {
+        scrollTopOnClose = false;
+        scrollTo({ top: 0, behavior: reduceMotion.matches ? 'instant' : 'smooth' });
+      }
+    });
+
+    menu.addEventListener('click', (event) => {
+      const link = (event.target as Element).closest<HTMLAnchorElement>('a[href]');
+      if (!link) return;
+      if (link.origin === location.origin && link.pathname === location.pathname && !link.hash) {
+        // Exactly this page: just get out of the way (and back to the top once the lock is gone).
+        event.preventDefault();
+        scrollTopOnClose = true;
+        closeMenu();
+        return;
+      }
+      // Navigating away: close at once so the page (and any view transition) starts clean.
+      closeMenu(true);
+    });
+
+    // The overlay is mobile-only: rotating/resizing to desktop closes it.
+    desktop.addEventListener('change', (event) => {
+      if (event.matches) closeMenu(true);
+    });
+  }
+</script>

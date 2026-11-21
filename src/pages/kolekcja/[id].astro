@@ -1,0 +1,237 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/site/SiteHeader.astro';
+import Exhibit from '../../components/detail/Exhibit.astro';
+import Placard from '../../components/detail/Placard.astro';
+import Story from '../../components/detail/Story.astro';
+import Originals from '../../components/detail/Originals.astro';
+import Neighbours from '../../components/detail/Neighbours.astro';
+import { t } from '../../components/detail/copy';
+import { getShirts, shirtHref, statusLabel, type ShirtEntry } from '../../lib/shirts';
+
+export const getStaticPaths = (async () => {
+  const shirts = await getShirts();
+  const total = shirts.length;
+  return shirts.map((entry, index) => {
+    // Wrap around; with fewer than 3 shirts avoid showing the same neighbour twice.
+    const prev = total > 2 ? shirts[(index - 1 + total) % total] : undefined;
+    const next = total > 1 ? shirts[(index + 1) % total] : undefined;
+    return { params: { id: entry.id }, props: { entry, index, total, prev, next } };
+  });
+}) satisfies GetStaticPaths;
+
+interface Props {
+  entry: ShirtEntry;
+  index: number;
+  total: number;
+  prev?: ShirtEntry;
+  next?: ShirtEntry;
+}
+
+const { entry, index, total, prev, next } = Astro.props;
+const { data } = entry;
+
+const describe = (): string => {
+  if (data.draft || !data.story) return t.metaDraft(data.player, data.number);
+  const facts = [statusLabel[data.status].pl, data.season, data.competition].filter(Boolean).join(', ');
+  const text = `${data.player} #${data.number} (${facts}). ${data.story.pl}`;
+  return text.length > 160 ? `${text.slice(0, 157).replace(/\s+\S*$/, '')}…` : text;
+};
+
+const prevPath = prev ? shirtHref(prev.id) : null;
+const nextPath = next ? shirtHref(next.id) : null;
+---
+
+<BaseLayout
+  title={t.metaTitle(data.player, data.number)}
+  description={describe()}
+  themeColor="#c6102e"
+  canonical={shirtHref(entry.id)}
+  ogType="article"
+  noindex={data.draft}
+>
+  <Fragment slot="head">
+    <!-- Must run before first render: flags a view-transition arrival + sets the slide direction.
+         `vt-in` is never removed again – removing it would (re)start the direct-visit entrance. -->
+    <script is:inline define:vars={{ prevPath, nextPath }}>
+      addEventListener('pagereveal', (event) => {
+        const transition = event.viewTransition;
+        if (!transition) return;
+        document.documentElement.classList.add('vt-in');
+        const from = window.navigation?.activation?.from?.url;
+        if (!from || !transition.types) return;
+        const path = new URL(from).pathname;
+        if (path === prevPath) transition.types.add('to-next');
+        else if (path === nextPath) transition.types.add('to-prev');
+      });
+    </script>
+  </Fragment>
+
+  <div class="top">
+    <SiteHeader tone="red" current="kolekcja" />
+  </div>
+
+  <main id="main">
+    <Exhibit entry={entry} index={index} total={total} />
+
+    <div class="info">
+      <Placard shirt={data} />
+      <Story story={data.story?.pl} />
+    </div>
+
+    <Originals shirt={data} />
+
+    <div class="more">
+      <Neighbours prev={prev} next={next} total={total} />
+    </div>
+  </main>
+
+  <footer class="foot">
+    <p>{t.disclaimer}</p>
+  </footer>
+</BaseLayout>
+
+<script>
+  import { initDetail } from '../../components/detail/detail';
+
+  initDetail();
+</script>
+
+<style>
+  .top {
+    background: var(--c-red);
+  }
+
+  .info {
+    display: grid;
+    gap: clamp(3rem, 8vw, 5rem);
+    padding: clamp(3.5rem, 10vw, 7rem) var(--gutter);
+  }
+
+  .more {
+    padding: clamp(2rem, 6vw, 4rem) var(--gutter) clamp(3rem, 8vw, 5rem);
+    border-block-start: 1px solid var(--line);
+  }
+
+  .foot {
+    padding: 1.5rem var(--gutter) 2rem;
+    border-block-start: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+
+    & p {
+      margin: 0;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .info {
+      grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr);
+      align-items: start;
+      column-gap: clamp(3rem, 7vw, 8rem);
+    }
+
+    .more {
+      max-inline-size: 72rem;
+      margin-inline: auto;
+      border-block-start: 0;
+    }
+  }
+</style>
+
+<style is:global>
+  /*
+   * Cross-document view transition, as seen when ARRIVING on a shirt page.
+   * The exhibit, a clicked prev/next card and the clicked grid card all carry
+   * `view-transition-class: exhibit`, so this timing drives the grid → detail morph too.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    /* `collection-shirt` = the grid card's shirt (it also carries `exhibit`, listed for safety). */
+    ::view-transition-group(*.exhibit),
+    ::view-transition-group(*.collection-shirt) {
+      animation-duration: 560ms;
+      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    ::view-transition-old(*.exhibit),
+    ::view-transition-new(*.exhibit),
+    ::view-transition-old(*.collection-shirt),
+    ::view-transition-new(*.collection-shirt) {
+      animation-duration: 280ms;
+      animation-timing-function: ease-out;
+    }
+
+    /* No delay on the incoming page: its first frame is already (partly) visible. */
+    ::view-transition-old(root) {
+      animation: 180ms ease-in both dt-vt-out;
+    }
+
+    ::view-transition-new(root) {
+      animation: 280ms cubic-bezier(0.16, 1, 0.3, 1) both dt-vt-in;
+    }
+
+    /* Prev/next without a shared element: exhibits slide like a carousel. */
+    html:active-view-transition-type(to-next) {
+      &::view-transition-old(*.exhibit):only-child {
+        animation: 360ms cubic-bezier(0.65, 0, 0.35, 1) both dt-vt-out-left;
+      }
+
+      &::view-transition-new(*.exhibit):only-child {
+        animation: 560ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both dt-vt-in-right;
+      }
+    }
+
+    html:active-view-transition-type(to-prev) {
+      &::view-transition-old(*.exhibit):only-child {
+        animation: 360ms cubic-bezier(0.65, 0, 0.35, 1) both dt-vt-out-right;
+      }
+
+      &::view-transition-new(*.exhibit):only-child {
+        animation: 560ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both dt-vt-in-left;
+      }
+    }
+  }
+
+  @keyframes dt-vt-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes dt-vt-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes dt-vt-out-left {
+    to {
+      opacity: 0;
+      transform: translateX(-30vw) rotate(-6deg);
+    }
+  }
+
+  @keyframes dt-vt-out-right {
+    to {
+      opacity: 0;
+      transform: translateX(30vw) rotate(6deg);
+    }
+  }
+
+  @keyframes dt-vt-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(30vw) rotate(6deg);
+    }
+  }
+
+  @keyframes dt-vt-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-30vw) rotate(-6deg);
+    }
+  }
+</style>

@@ -1,0 +1,250 @@
+---
+/**
+ * One shirt on the „Szatnia” rail: wire hook → swinging body (rotated by rack.ts around the
+ * hook point) → lift (scale on hover) → visual (3D flip front ↔ back) + museum tag.
+ *
+ * The visual only carries `data-vt` (never a static view-transition-name): Sezony already owns
+ * the static names, home.ts initMorph moves the name to the clicked element.
+ */
+import ShirtFace from '../../shirt/ShirtFace.astro';
+import { lastName, shirtHref, shirtTransitionName, type ShirtEntry } from '../../../lib/shirts';
+
+export interface HangerStrings {
+  number: string;
+  tagNo: string;
+  open: string;
+}
+
+interface Props {
+  entry: ShirtEntry;
+  index: number;
+  strings: HangerStrings;
+}
+
+const { entry, index, strings } = Astro.props;
+const { data } = entry;
+const vt = shirtTransitionName(entry.id);
+const hasBack = Boolean(data.images?.back);
+/* Matches the --w steps in Szatnia.astro (mobile 58vw → 16rem → 19rem). */
+const sizes = '(min-width: 64rem) 19rem, (min-width: 40rem) 16rem, (min-width: 26rem) 15rem, 58vw';
+---
+
+<li class="peg" style={`--k:${index}`}>
+  <a class="hanger" href={shirtHref(entry.id)} draggable="false" data-shirt-link data-astro-prefetch="hover">
+    <span class="swing" data-swing>
+      <svg class="hook" viewBox="0 0 40 64" aria-hidden="true" focusable="false">
+        <path d="M20 64V32c0-8 8-10 8-18 0-7-5-11-10-11s-8 4-7 8" />
+      </svg>
+      <span class="lift">
+        <span class="visual" data-vt={vt}>
+          <span class="face face--front">
+            <ShirtFace shirt={data} side="front" uid={`sz-${entry.id}`} sizes={sizes} />
+          </span>
+          {
+            hasBack && (
+              <span class="face face--back" data-back>
+                {/* Inert until rack.ts „warms” the rack (hover devices only) – touch never fetches it. */}
+                <template>
+                  <ShirtFace shirt={data} side="back" uid={`sz-b-${entry.id}`} sizes={sizes} />
+                </template>
+              </span>
+            )
+          }
+        </span>
+      </span>
+      <span class="tag" aria-hidden="true">
+        <span class="tag-no">{strings.tagNo} {data.number}</span>
+        <span class="tag-name">{lastName(data.player)}</span>
+        {data.season && <span class="tag-season">{data.season}</span>}
+      </span>
+    </span>
+    <span class="visually-hidden">
+      {data.player}, {strings.number} {data.number}{data.season && `, ${data.season}`} – {strings.open}
+    </span>
+  </a>
+</li>
+
+<style>
+  .peg {
+    position: relative;
+    flex: none;
+    inline-size: var(--w);
+
+    &:has(.hanger:hover, .hanger:focus-visible) {
+      z-index: 2;
+    }
+  }
+
+  .hanger {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: inherit;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-drag: none;
+
+    /* The ring goes around the shirt (the lift), not the whole tall link. */
+    &:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+  }
+
+  /* Pivot = top of the hook, where it sits on the rail. rack.ts writes `rotate` here. */
+  .swing {
+    position: relative;
+    display: block;
+    transform-origin: 50% 0;
+  }
+
+  .hook {
+    display: block;
+    inline-size: calc(var(--hook-h) * 0.625);
+    block-size: var(--hook-h);
+    margin-inline: auto;
+    overflow: visible;
+
+    & path {
+      fill: none;
+      stroke: var(--c-mist);
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  /* Collar sits ~5% down the cut-out: tuck the image up so the hook enters the neck. */
+  .lift {
+    display: block;
+    margin-block-start: calc(var(--w) * -0.075);
+    transform-origin: 50% 0;
+    perspective: 1600px;
+    transition: scale var(--dur) var(--ease-out);
+  }
+
+  .visual {
+    position: relative;
+    display: block;
+    aspect-ratio: 5 / 6;
+    inline-size: 100%;
+    transform-style: preserve-3d;
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+
+    & :global(img) {
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+  }
+
+  .face--back {
+    transform: rotateY(180deg);
+  }
+
+  /* Museum tag on a string from the hook. Touch (no hover): always shown. */
+  .tag {
+    position: absolute;
+    inset-block-start: calc(var(--hook-h) * 0.62);
+    inset-inline-start: 56%;
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.45rem 0.6rem 0.4rem;
+    border-block-start: 3px solid var(--c-red);
+    background: var(--c-white);
+    color: var(--c-ink);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    line-height: 1.25;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform-origin: 0.6rem -1.1rem;
+    rotate: -4deg;
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 0.35);
+
+    /* The string. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block-end: 100%;
+      inset-inline-start: 0.6rem;
+      inline-size: 1px;
+      block-size: 1.1rem;
+      background: var(--c-mist);
+    }
+  }
+
+  .tag-no {
+    font-weight: 800;
+    color: var(--c-red);
+  }
+
+  .tag-name {
+    font-weight: 700;
+  }
+
+  .tag-season {
+    color: var(--c-navy);
+  }
+
+  @media (hover: hover) {
+    .tag {
+      opacity: 0;
+      translate: 0 -0.9rem;
+      transition:
+        opacity var(--dur-fast) linear,
+        translate var(--dur) var(--ease-out),
+        rotate var(--dur-slow) var(--ease-out);
+    }
+
+    .hanger:is(:hover, :focus-visible) {
+      & .lift {
+        scale: 1.05;
+      }
+
+      /* Only once the back cut-out is in the DOM (warm) is there anything to turn to. */
+      & .visual:has(.face--back img) {
+        transform: rotateY(180deg);
+      }
+
+      & .tag {
+        opacity: 1;
+        translate: 0 0;
+        rotate: 3deg;
+      }
+    }
+
+    .hanger:focus-visible .visual {
+      outline: 2px solid var(--c-gold);
+      outline-offset: 0.5rem;
+    }
+  }
+
+  /* Reduced motion: no 3D turn, the back simply replaces the front. */
+  @media (hover: hover) and (prefers-reduced-motion: reduce) {
+    .hanger:is(:hover, :focus-visible) .visual:has(.face--back img) {
+      transform: none;
+    }
+
+    .face--back {
+      transform: none;
+      opacity: 0;
+    }
+
+    .hanger:is(:hover, :focus-visible) {
+      & .face--back {
+        opacity: 1;
+      }
+
+      & .face--front:has(+ .face--back img) {
+        opacity: 0;
+      }
+    }
+  }
+</style>

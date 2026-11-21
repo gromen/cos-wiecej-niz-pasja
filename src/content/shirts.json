@@ -1,0 +1,1345 @@
+[
+  {
+    "id": "93-iliev-77",
+    "igPost": 93,
+    "player": "Ivica Iliev",
+    "number": 77,
+    "season": "2026/27",
+    "seasonStart": 2026,
+    "competition": "Wisła Royal Day",
+    "kind": "special",
+    "color": "red",
+    "status": "match-worn",
+    "signed": true,
+    "maker": "Kappa",
+    "sponsor": "Superbet",
+    "story": {
+      "pl": "Grana koszulka Ivicy Ilieva z wydarzenia „Royal Day Wisła”. Mecz był świetną okazją do wspomnień – na boisku zobaczyłem piłkarzy, których grą zachwycałem się jako dziecko, a później nastolatek przed telewizorem.",
+      "en": "Match-worn shirt of Ivica Iliev from the “Wisła Royal Day”. The game brought back memories – on the pitch I saw players I admired as a kid and later as a teenager in front of the TV."
+    },
+    "instagram": "https://www.instagram.com/p/DfJ3knADisd/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 18
+    },
+    "images": {
+      "front": "../assets/shirts/93/front.png",
+      "back": "../assets/shirts/93/back.png"
+    },
+    "originals": [
+      "../assets/shirts/93/original-1.webp",
+      "../assets/shirts/93/original-2.webp"
+    ]
+  },
+  {
+    "id": "92-lobodzinski-21",
+    "igPost": 92,
+    "player": "Wojciech Łobodziński",
+    "number": 21,
+    "season": "2008/09",
+    "seasonStart": 2008,
+    "competition": "el. Ligi Mistrzów",
+    "kind": "home",
+    "color": "red",
+    "status": "match-issued",
+    "signed": false,
+    "maker": "Umbro",
+    "sponsor": "TF Kable",
+    "story": {
+      "pl": "Koszulka przygotowana na eliminacje Ligi Mistrzów dla Wojciecha Łobodzińskiego, który w Wiśle rozegrał 70 meczów oraz 23 w pierwszej reprezentacji Polski.",
+      "en": "Prepared for the Champions League qualifiers for Wojciech Łobodziński, who played 70 games for Wisła and won 23 caps for Poland."
+    },
+    "instagram": "https://www.instagram.com/p/De3xhHGjsZj/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 17
+    },
+    "images": {
+      "front": "../assets/shirts/92/front.png",
+      "back": "../assets/shirts/92/back.png"
+    },
+    "originals": [
+      "../assets/shirts/92/original-1.webp",
+      "../assets/shirts/92/original-2.webp"
+    ]
+  },
+  {
+    "id": "91-letkiewicz-28",
+    "igPost": 91,
+    "player": "Patryk Letkiewicz",
+    "number": 28,
+    "season": "2025/26",
+    "seasonStart": 2025,
+    "competition": "STS Puchar Polski",
+    "match": {
+      "pl": "I runda: Odra Bytom Odrzański – Wisła Kraków 0:1 (Rodado), 25.09.2025",
+      "en": "Round 1: Odra Bytom Odrzański – Wisła Kraków 0:1 (Rodado), 25 Sep 2025"
+    },
+    "kind": "goalkeeper",
+    "color": "orange",
+    "status": "match-worn",
+    "signed": true,
+    "maker": "Kappa",
+    "sponsor": "Texom",
+    "story": {
+      "pl": "Patryk rozegrał całe 90 minut. Zabrudzenie przy patchu STS potwierdza na 99 procent, że koszulka była użyta w meczu. Przy jej przesyłce była mała afera z Pocztą Polską – ale finalnie wszystko skończyło się dobrze.",
+      "en": "Patryk played the full 90 minutes. A stain next to the STS patch makes it 99% certain the shirt was worn in the game. Its delivery caused a small drama with the Polish Post – but it all ended well."
+    },
+    "instagram": "https://www.instagram.com/p/Ddyhb8Zjr-w/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 16
+    },
+    "images": {
+      "front": "../assets/shirts/91/front.png",
+      "back": "../assets/shirts/91/back.png"
+    },
+    "originals": [
+      "../assets/shirts/91/original-1.webp",
+      "../assets/shirts/91/original-2.webp"
+    ]
+  },
+  {
+    "id": "90-duda-41",
+    "igPost": 90,
+    "player": "Kacper Duda",
+    "number": 41,
+    "season": "2025/26",
+    "seasonStart": 2025,
+    "competition": "Fortuna 1 Liga",
+    "match": {
+      "pl": "27. kolejka: Wisła Kraków – Górnik Łęczna 3:2 (Fred, Božić, Ertlthaler), 6.04.2026",
+      "en": "Matchday 27: Wisła Kraków – Górnik Łęczna 3:2 (Fred, Božić, Ertlthaler), 6 Apr 2026"
+    },
+    "kind": "home",
+    "color": "red",
+    "status": "match-worn",
+    "signed": true,
+    "maker": "Kappa",
+    "sponsor": "Texom",
+    "story": {
+      "pl": "Kacper Duda rozegrał w niej 83 minuty, zmienił go Marc Carbo. Wyjątkowa koszulka z akcją „1,5% podatku” dla Fundacji Wisły Kraków.",
+      "en": "Kacper Duda played 83 minutes in it before being replaced by Marc Carbo. A special shirt promoting the “1.5% tax” campaign for the Wisła Kraków Foundation."
+    },
+    "instagram": "https://www.instagram.com/p/DX1mBE0gpti/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 15
+    },
+    "images": {
+      "front": "../assets/shirts/90/front.png",
+      "back": "../assets/shirts/90/back.png"
+    },
+    "originals": [
+      "../assets/shirts/90/original-1.webp",
+      "../assets/shirts/90/original-2.webp"
+    ]
+  },
+  {
+    "id": "89-buksa-44",
+    "igPost": 89,
+    "player": "Aleksander Buksa",
+    "number": 44,
+    "season": "2020/21",
+    "seasonStart": 2020,
+    "competition": "PKO Ekstraklasa",
+    "kind": "home",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "sponsor": "Łączy nas pasja",
+    "story": {
+      "pl": "Aleksander nie był jeszcze pełnoletni, więc nie mógł grać w koszulce z logo bukmachera LV BET – stąd napis „Łączy nas pasja”.",
+      "en": "Aleksander was not yet 18, so he could not wear a shirt with the LV BET bookmaker logo – hence the “Łączy nas pasja” (“Passion unites us”) print."
+    },
+    "instagram": "https://www.instagram.com/p/DWv4KyaDAQl/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 14
+    },
+    "images": {
+      "front": "../assets/shirts/89/front.png",
+      "back": "../assets/shirts/89/back.png"
+    },
+    "originals": [
+      "../assets/shirts/89/original-1.webp",
+      "../assets/shirts/89/original-2.webp"
+    ]
+  },
+  {
+    "id": "88-buchalik-22",
+    "igPost": 88,
+    "player": "Michał Buchalik",
+    "number": 22,
+    "season": "2015/16",
+    "seasonStart": 2015,
+    "competition": "Ekstraklasa",
+    "kind": "goalkeeper",
+    "color": "yellow",
+    "status": "match-issued",
+    "signed": true,
+    "maker": "adidas",
+    "sponsor": "Telefonika",
+    "story": {
+      "pl": "Koszulka bramkarska przygotowana na sezon 2015/16 – pierwsza żółta koszulka w kolekcji, od której zacząłem kolejny rok zbierania.",
+      "en": "Goalkeeper shirt prepared for the 2015/16 season – the first yellow shirt in the collection and the start of another collecting year."
+    },
+    "instagram": "https://www.instagram.com/p/DUQWxmGDMK3/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 13
+    },
+    "images": {
+      "front": "../assets/shirts/88/front.png",
+      "back": "../assets/shirts/88/back.png"
+    },
+    "originals": [
+      "../assets/shirts/88/original-1.webp",
+      "../assets/shirts/88/original-2.webp"
+    ]
+  },
+  {
+    "id": "87-iwan-7",
+    "igPost": 87,
+    "player": "Andrzej Iwan",
+    "number": 7,
+    "season": "lata 70/80",
+    "seasonStart": 1979,
+    "seasonApprox": true,
+    "competition": "I liga",
+    "kind": "home",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": true,
+    "story": {
+      "pl": "Najstarsza i najbardziej kontrowersyjna koszulka w kolekcji – z podpisem śp. Andrzeja Iwana. Nie znalazłem jeszcze nic, co potwierdzałoby, że jest meczowa. Jest kilka teorii – może razem ustalimy, czy Pan Andrzej rzeczywiście w niej grał i w którym sezonie.",
+      "en": "The oldest and most controversial shirt in the collection – signed by the late Andrzej Iwan. I have not yet found proof that it was match-worn. There are a few theories – maybe together we can find out whether he really played in it, and in which season."
+    },
+    "instagram": "https://www.instagram.com/p/DS2nEoujPUm/",
+    "draft": false,
+    "wall": {
+      "row": 5,
+      "col": 12
+    },
+    "images": {
+      "front": "../assets/shirts/87/front.png",
+      "back": "../assets/shirts/87/back.png"
+    },
+    "originals": [
+      "../assets/shirts/87/original-1.webp",
+      "../assets/shirts/87/original-2.webp"
+    ]
+  },
+  {
+    "id": "maczynski-29-r1k01",
+    "player": "Mączyński",
+    "number": 29,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 1
+    }
+  },
+  {
+    "id": "pawlowski-99-r1k02",
+    "player": "Pawłowski",
+    "number": 99,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 2
+    }
+  },
+  {
+    "id": "peszko-7-r1k03",
+    "player": "Peszko",
+    "number": 7,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 3
+    }
+  },
+  {
+    "id": "wasilewski-27-r1k04",
+    "player": "Wasilewski",
+    "number": 27,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 4
+    }
+  },
+  {
+    "id": "klemenz-5-r1k05",
+    "player": "Klemenz",
+    "number": 5,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 5
+    }
+  },
+  {
+    "id": "basha-10-r1k06",
+    "player": "Basha",
+    "number": 10,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 6
+    }
+  },
+  {
+    "id": "wojtkowski-26-r1k07",
+    "player": "Wojtkowski",
+    "number": 26,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 7
+    }
+  },
+  {
+    "id": "korczyn-51-r1k08",
+    "player": "Korczyn",
+    "number": 51,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 8
+    }
+  },
+  {
+    "id": "jovic-5-r1k09",
+    "player": "Jović",
+    "number": 5,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 9
+    }
+  },
+  {
+    "id": "ze-manuel-70-r1k10",
+    "player": "Zé Manuel",
+    "number": 70,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 10
+    }
+  },
+  {
+    "id": "holownia-14-r1k11",
+    "player": "Hołownia",
+    "number": 14,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 11
+    }
+  },
+  {
+    "id": "m-zajac-15-r1k12",
+    "player": "M. Zając",
+    "number": 15,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 12
+    }
+  },
+  {
+    "id": "glowacki-6-r1k13",
+    "player": "Głowacki",
+    "number": 6,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 13
+    }
+  },
+  {
+    "id": "maczynski-29-r1k14",
+    "player": "Mączyński",
+    "number": 29,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 14
+    }
+  },
+  {
+    "id": "czekaj-3-r1k15",
+    "player": "Czekaj",
+    "number": 3,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 15
+    }
+  },
+  {
+    "id": "buchalik-22-r1k16",
+    "player": "Buchalik",
+    "number": 22,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 16
+    }
+  },
+  {
+    "id": "broda-48-r1k17",
+    "player": "Broda",
+    "number": 48,
+    "kind": "goalkeeper",
+    "color": "green",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 1,
+      "col": 17
+    }
+  },
+  {
+    "id": "cwielong-86-r2k01",
+    "player": "Cwielong",
+    "number": 86,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 1
+    }
+  },
+  {
+    "id": "nieznany-24-r2k02",
+    "player": "Do uzupełnienia",
+    "number": 24,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 2
+    }
+  },
+  {
+    "id": "boguski-9-r2k03",
+    "player": "Boguski",
+    "number": 9,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 3
+    }
+  },
+  {
+    "id": "yeboah-40-r2k04",
+    "player": "Yeboah",
+    "number": 40,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 4
+    }
+  },
+  {
+    "id": "basha-20-r2k05",
+    "player": "Basha",
+    "number": 20,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 5
+    }
+  },
+  {
+    "id": "zienczuk-17-r2k06",
+    "player": "Zieńczuk",
+    "number": 17,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 6
+    }
+  },
+  {
+    "id": "chuca-18-r2k07",
+    "player": "Chuca",
+    "number": 18,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 7
+    }
+  },
+  {
+    "id": "plewka-80-r2k08",
+    "player": "Plewka",
+    "number": 80,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 8
+    }
+  },
+  {
+    "id": "wasilewski-27-r2k09",
+    "player": "Wasilewski",
+    "number": 27,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 9
+    }
+  },
+  {
+    "id": "blaszczykowski-16-r2k10",
+    "player": "Błaszczykowski",
+    "number": 16,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 10
+    }
+  },
+  {
+    "id": "guzmics-26-r2k11",
+    "player": "Guzmics",
+    "number": 26,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 11
+    }
+  },
+  {
+    "id": "burliga-21-r2k12",
+    "player": "Burliga",
+    "number": 21,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 12
+    }
+  },
+  {
+    "id": "cleber-25-r2k13",
+    "player": "Cleber",
+    "number": 25,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 13
+    }
+  },
+  {
+    "id": "zajac-36-r2k14",
+    "player": "Zając",
+    "number": 36,
+    "kind": "goalkeeper",
+    "color": "green",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 14
+    }
+  },
+  {
+    "id": "malecki-19-r2k15",
+    "player": "Małecki",
+    "number": 19,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 15
+    }
+  },
+  {
+    "id": "pawel-brozek-23-r2k16",
+    "player": "Paweł Brożek",
+    "number": 23,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 16
+    }
+  },
+  {
+    "id": "sadlok-4-r2k17",
+    "player": "Sadlok",
+    "number": 4,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 2,
+      "col": 17
+    }
+  },
+  {
+    "id": "ekwueme-26-r3k01",
+    "player": "Ekwueme",
+    "number": 26,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 1
+    }
+  },
+  {
+    "id": "buchalik-22-r3k02",
+    "player": "Buchalik",
+    "number": 22,
+    "kind": "goalkeeper",
+    "color": "green",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 2
+    }
+  },
+  {
+    "id": "mojta-15-r3k03",
+    "player": "Mójta",
+    "number": 15,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 3
+    }
+  },
+  {
+    "id": "gruszkowski-20-r3k04",
+    "player": "Gruszkowski",
+    "number": 20,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 4
+    }
+  },
+  {
+    "id": "manu-28-r3k05",
+    "player": "Manu",
+    "number": 28,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 5
+    }
+  },
+  {
+    "id": "colley-5-r3k06",
+    "player": "Colley",
+    "number": 5,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 6
+    }
+  },
+  {
+    "id": "bieganski-31-r3k07",
+    "player": "Biegański",
+    "number": 31,
+    "kind": "goalkeeper",
+    "color": "green",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 7
+    }
+  },
+  {
+    "id": "jaliens-2-r3k08",
+    "player": "Jaliens",
+    "number": 2,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 8
+    }
+  },
+  {
+    "id": "glowacki-6-r3k09",
+    "player": "Głowacki",
+    "number": 6,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 9
+    }
+  },
+  {
+    "id": "l-fernandez-10-r3k10",
+    "player": "L. Fernández",
+    "number": 10,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 10
+    }
+  },
+  {
+    "id": "sadlok-4-r3k11",
+    "player": "Sadlok",
+    "number": 4,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 11
+    }
+  },
+  {
+    "id": "lamey-31-r3k12",
+    "player": "Lamey",
+    "number": 31,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 12
+    }
+  },
+  {
+    "id": "broda-1-r3k13",
+    "player": "Broda",
+    "number": 1,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 13
+    }
+  },
+  {
+    "id": "szywacz-53-r3k14",
+    "player": "Szywacz",
+    "number": 53,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 14
+    }
+  },
+  {
+    "id": "bieganski-31-r3k15",
+    "player": "Biegański",
+    "number": 31,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 15
+    }
+  },
+  {
+    "id": "nieznany-12-r3k16",
+    "player": "Do uzupełnienia",
+    "number": 12,
+    "kind": "unknown",
+    "color": "other",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 16
+    }
+  },
+  {
+    "id": "basha-66-r3k17",
+    "player": "Basha",
+    "number": 66,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 3,
+      "col": 17
+    }
+  },
+  {
+    "id": "pawelek-81-r4k01",
+    "player": "Pawełek",
+    "number": 81,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 1
+    }
+  },
+  {
+    "id": "uryga-6-r4k02",
+    "player": "Uryga",
+    "number": 6,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 2
+    }
+  },
+  {
+    "id": "malecki-19-r4k03",
+    "player": "Małecki",
+    "number": 19,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 3
+    }
+  },
+  {
+    "id": "satrustegui-19-r4k04",
+    "player": "Satrústegui",
+    "number": 19,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 4
+    }
+  },
+  {
+    "id": "juszczyk-12-r4k05",
+    "player": "Juszczyk",
+    "number": 12,
+    "kind": "unknown",
+    "color": "other",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 5
+    }
+  },
+  {
+    "id": "szota-17-r4k06",
+    "player": "Szota",
+    "number": 17,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 6
+    }
+  },
+  {
+    "id": "sobczak-23-r4k07",
+    "player": "Sobczak",
+    "number": 23,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 7
+    }
+  },
+  {
+    "id": "broda-46-r4k08",
+    "player": "Broda",
+    "number": 46,
+    "kind": "goalkeeper",
+    "color": "green",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 8
+    }
+  },
+  {
+    "id": "starzynski-54-r4k09",
+    "player": "Starzyński",
+    "number": 54,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 9
+    }
+  },
+  {
+    "id": "rodado-9-r4k10",
+    "player": "Rodado",
+    "number": 9,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 10
+    }
+  },
+  {
+    "id": "cisse-70-r4k11",
+    "player": "Cissé",
+    "number": 70,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 11
+    }
+  },
+  {
+    "id": "mlynski-11-r4k12",
+    "player": "Młyński",
+    "number": 11,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 12
+    }
+  },
+  {
+    "id": "lasicki-26-r4k13",
+    "player": "Łasicki",
+    "number": 26,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 13
+    }
+  },
+  {
+    "id": "letkiewicz-28-r4k14",
+    "player": "Letkiewicz",
+    "number": 28,
+    "kind": "unknown",
+    "color": "other",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 14
+    }
+  },
+  {
+    "id": "fred-10-r4k15",
+    "player": "Fred",
+    "number": 10,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 15
+    }
+  },
+  {
+    "id": "kiss-13-r4k16",
+    "player": "Kiss",
+    "number": 13,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 16
+    }
+  },
+  {
+    "id": "zwolinski-99-r4k17",
+    "player": "Zwoliński",
+    "number": 99,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 4,
+      "col": 17
+    }
+  },
+  {
+    "id": "malecki-19-r5k01",
+    "player": "Małecki",
+    "number": 19,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 1
+    }
+  },
+  {
+    "id": "sobolewski-7-r5k02",
+    "player": "Sobolewski",
+    "number": 7,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 2
+    }
+  },
+  {
+    "id": "zyro-14-r5k03",
+    "player": "Żyro",
+    "number": 14,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 3
+    }
+  },
+  {
+    "id": "sukiennicki-19-r5k04",
+    "player": "Sukiennicki",
+    "number": 19,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 4
+    }
+  },
+  {
+    "id": "jovic-5-r5k05",
+    "player": "Jović",
+    "number": 5,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 5
+    }
+  },
+  {
+    "id": "nieznany-13-r5k06",
+    "player": "Do uzupełnienia",
+    "number": 13,
+    "kind": "unknown",
+    "color": "blue",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 6
+    }
+  },
+  {
+    "id": "broda-1-r5k07",
+    "player": "Broda",
+    "number": 1,
+    "kind": "goalkeeper",
+    "color": "green",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 7
+    }
+  },
+  {
+    "id": "boguski-9-r5k08",
+    "player": "Boguski",
+    "number": 9,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 8
+    }
+  },
+  {
+    "id": "duda-41-r5k09",
+    "player": "Duda",
+    "number": 41,
+    "kind": "unknown",
+    "color": "red",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 9
+    }
+  },
+  {
+    "id": "swiatko-49-r5k10",
+    "player": "Świątko",
+    "number": 49,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 10
+    }
+  },
+  {
+    "id": "ondrasek-14-r5k11",
+    "player": "Ondrášek",
+    "number": 14,
+    "kind": "unknown",
+    "color": "white",
+    "status": "unconfirmed",
+    "signed": false,
+    "draft": true,
+    "wall": {
+      "row": 5,
+      "col": 11
+    }
+  }
+]

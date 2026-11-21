@@ -1,0 +1,49 @@
+---
+/**
+ * Back print of the placeholder shirt (surname, number, optional signature) – SVG content only,
+ * meant to sit inside a 400×480 <svg>. Shared by <ShirtSvg> and <ShirtUse>.
+ * Styled by the global `.shirt .back` / `.shirt .sig` rules in ShirtSvg.astro.
+ */
+import { SIGNATURE } from './geometry';
+
+interface Props {
+  name?: string;
+  number?: number | string;
+  signed?: boolean;
+  /** Any CSS colour, including `var(--trim)`. */
+  trim?: string;
+}
+
+const { name = '', number = '', signed = false, trim = '#fafafa' } = Astro.props;
+const label = String(name).toUpperCase();
+---
+
+<g class="back" style={`fill:${trim}`} text-anchor="middle">
+  <text
+    x="200"
+    y="108"
+    font-size="30"
+    font-weight="800"
+    letter-spacing="3"
+    textLength={label.length > 7 ? 190 : undefined}
+    lengthAdjust="spacingAndGlyphs">{label}</text
+  >
+  <text x="200" y="298" font-size="200" font-weight="800" textLength="170" lengthAdjust="spacingAndGlyphs"
+    >{number}</text
+  >
+  {
+    signed && (
+      <path
+        class="sig"
+        transform="rotate(-9 200 365)"
+        pathLength="1"
+        d={SIGNATURE}
+        fill="none"
+        stroke="#f4efe0"
+        stroke-width="3.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    )
+  }
+</g>

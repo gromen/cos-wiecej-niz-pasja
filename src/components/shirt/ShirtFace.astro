@@ -1,0 +1,77 @@
+---
+/**
+ * One side of a shirt: the real cut-out photo when `images.front/back` exists,
+ * otherwise the SVG placeholder. Both fill the parent box (5:6) the same way,
+ * so swapping placeholder → photo never changes layout.
+ */
+import { Picture } from 'astro:assets';
+import ShirtSvg from './ShirtSvg.astro';
+import { lastName, shirtPalette, type ShirtData } from '../../lib/shirts';
+
+interface Props {
+  shirt: ShirtData;
+  side?: 'front' | 'back';
+  /** Unique per instance (SVG ids). */
+  uid: string;
+  /** Alt text for the photo (the SVG placeholder is always decorative). */
+  alt?: string;
+  sizes?: string;
+  /** Above-the-fold exhibit: eager + high fetch priority. */
+  priority?: boolean;
+  /** Rendition widths (px); widths above the source's are dropped by Astro. */
+  widths?: number[];
+}
+
+const {
+  shirt,
+  side = 'front',
+  uid,
+  alt = '',
+  sizes = '(min-width: 60rem) 40vw, 80vw',
+  priority = false,
+  widths = [320, 480, 720, 960, 1280],
+} = Astro.props;
+const photo = shirt.images?.[side];
+const { body, trim } = shirtPalette[shirt.color];
+---
+
+{
+  photo ? (
+    <Picture
+      src={photo}
+      alt={alt}
+      sizes={sizes}
+      widths={widths}
+      formats={['avif']}
+      fallbackFormat="webp"
+      loading={priority ? 'eager' : 'lazy'}
+      fetchpriority={priority ? 'high' : 'auto'}
+      decoding="async"
+      pictureAttributes={{ class: 'shirt-photo' }}
+    />
+  ) : (
+    <ShirtSvg
+      side={side}
+      uid={uid}
+      color={body}
+      trim={trim}
+      name={lastName(shirt.player)}
+      number={shirt.number}
+      signed={shirt.signed}
+    />
+  )
+}
+
+<style>
+  :global(.shirt-photo) {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+
+    & :global(img) {
+      inline-size: 100%;
+      block-size: 100%;
+      object-fit: contain;
+    }
+  }
+</style>

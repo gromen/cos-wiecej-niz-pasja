@@ -1,0 +1,197 @@
+---
+/**
+ * Prev/next shirt cards. The visuals carry NO static view-transition-name
+ * (that would make the current exhibit fly to the bottom of the next page);
+ * detail.ts names the clicked card at `pageswap`, so it morphs into the next exhibit.
+ */
+import ShirtFace from '../shirt/ShirtFace.astro';
+import { shirtHref, shirtTransitionName, type ShirtEntry } from '../../lib/shirts';
+import { t } from './copy';
+
+interface Props {
+  prev?: ShirtEntry;
+  next?: ShirtEntry;
+  total: number;
+}
+
+const { prev, next, total } = Astro.props;
+const cards = [
+  prev && { dir: 'prev' as const, entry: prev, label: t.prev, key: 'ArrowLeft' },
+  next && { dir: 'next' as const, entry: next, label: t.next, key: 'ArrowRight' },
+].filter((card) => Boolean(card)) as {
+  dir: 'prev' | 'next';
+  entry: ShirtEntry;
+  label: string;
+  key: string;
+}[];
+---
+
+{
+  cards.length > 0 && (
+    <nav class="neighbours" aria-label={t.navLabel}>
+      <ul>
+        {cards.map(({ dir, entry, label, key }) => (
+          <li class:list={['slot', `slot--${dir}`]}>
+            <a class="nb" href={shirtHref(entry.id)} rel={dir} data-nav={dir} aria-keyshortcuts={key}>
+              <span class="nb-tile" aria-hidden="true">
+                <span class="nb-no">{entry.data.number}</span>
+                <span class="nb-vis" data-vt={shirtTransitionName(entry.id)}>
+                  <ShirtFace shirt={entry.data} uid={`nb-${dir}`} sizes="(min-width: 48rem) 9vw, 22vw" />
+                </span>
+              </span>
+              <span class="nb-dir">
+                {dir === 'prev' && <span aria-hidden="true">← </span>}
+                {label}
+                {dir === 'next' && <span aria-hidden="true"> →</span>}
+              </span>
+              <span class="nb-name">
+                {entry.data.player} <span class="nb-num">{entry.data.number}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <a class="all" href="/kolekcja/">
+        {t.all} <span class="all-count">({total})</span>
+      </a>
+    </nav>
+  )
+}
+
+<style>
+  .neighbours {
+    display: grid;
+    gap: 2rem;
+    justify-items: center;
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(0.75rem, 3vw, 2rem);
+    inline-size: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .slot--next:only-child {
+    grid-column: 2;
+  }
+
+  .nb {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+    text-decoration: none;
+
+    &:focus-visible {
+      outline-offset: 6px;
+    }
+  }
+
+  .slot--next .nb {
+    text-align: end;
+  }
+
+  .nb-tile {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+    overflow: clip;
+    aspect-ratio: 4 / 3;
+    margin-block-end: 0.5rem;
+    border-radius: var(--radius);
+    background: var(--c-red);
+
+    /* White sash behind the mini shirt. */
+    &::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset-inline: -20%;
+      inset-block-start: 38%;
+      block-size: 26%;
+      background: var(--c-white);
+      rotate: -11deg;
+    }
+  }
+
+  .nb-no {
+    position: absolute;
+    z-index: -2;
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 30vw, 14rem);
+    font-weight: 900;
+    font-stretch: 62%;
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgb(250 250 250 / 0.45);
+  }
+
+  .nb-vis {
+    display: block;
+    inline-size: 54%;
+    aspect-ratio: 5 / 6;
+    view-transition-class: exhibit;
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .nb-dir {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  .nb-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    font-stretch: 75%;
+    line-height: 1;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+
+  .nb-num {
+    color: transparent;
+    -webkit-text-stroke: 1px var(--c-white);
+  }
+
+  .all {
+    padding: 0.7rem 1.25rem;
+    border: 1px solid rgb(210 179 101 / 0.5);
+    border-radius: 99px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--c-gold);
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast);
+
+    &:hover {
+      background: var(--c-gold);
+      color: var(--c-ink);
+    }
+  }
+
+  .all-count {
+    opacity: 0.7;
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .nb:hover .nb-vis {
+      transform: translateY(-4%) rotate(-2deg) scale(1.04);
+    }
+
+    .slot--next .nb:hover .nb-vis {
+      transform: translateY(-4%) rotate(2deg) scale(1.04);
+    }
+  }
+</style>

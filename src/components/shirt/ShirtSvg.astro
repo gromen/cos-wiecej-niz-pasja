@@ -1,0 +1,115 @@
+---
+/**
+ * Placeholder shirt illustration (no club crest, no sponsor logos), self-contained:
+ * its own <defs>, so it works anywhere. On pages with many shirts (the collection grid)
+ * use <ShirtSymbols> once + <ShirtUse> per shirt instead – far smaller HTML.
+ * Fixed 5:6 box (viewBox 400x480) – a real <Picture> later must fill the same
+ * wrapper with `width: 100%; height: 100%; object-fit: contain`.
+ */
+import ShirtBackPrint from './ShirtBackPrint.astro';
+import { BODY, CHEST_STAR, CUFFS, HEM, NECK_BACK, NECK_FRONT, SASH_BAND, SEAMS, STRIPES, VIEWBOX } from './geometry';
+
+interface Props {
+  side?: 'front' | 'back';
+  color?: string;
+  name?: string;
+  number?: number | string;
+  signed?: boolean;
+  /** Unique id prefix – required, several instances live on one page. */
+  uid: string;
+  /** Colour of collar, cuffs, star, sash and back print (default white). */
+  trim?: string;
+}
+
+const { side = 'front', color = '#c6102e', name = '', number = '', signed = false, uid, trim = '#fafafa' } = Astro.props;
+const neck = side === 'front' ? NECK_FRONT : NECK_BACK;
+---
+
+<svg class="shirt" viewBox={VIEWBOX} xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id={`${uid}-clip`}><path d={BODY}></path></clipPath>
+    <linearGradient id={`${uid}-edge`} x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity="0.38"></stop>
+      <stop offset="0.2" stop-color="#000" stop-opacity="0"></stop>
+      <stop offset="0.8" stop-color="#000" stop-opacity="0"></stop>
+      <stop offset="1" stop-color="#000" stop-opacity="0.38"></stop>
+    </linearGradient>
+    <linearGradient id={`${uid}-fold`} x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity="0"></stop>
+      <stop offset="0.5" stop-color="#000" stop-opacity="0.13"></stop>
+      <stop offset="1" stop-color="#000" stop-opacity="0"></stop>
+    </linearGradient>
+    <pattern id={`${uid}-weave`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="4" height="1" fill="#000" opacity="0.1"></rect>
+    </pattern>
+  </defs>
+
+  <path d={BODY} fill={color}></path>
+
+  <g clip-path={`url(#${uid}-clip)`}>
+    <rect width="400" height="480" fill={`url(#${uid}-weave)`}></rect>
+    <rect x="130" y="40" width="46" height="420" fill={`url(#${uid}-fold)`}></rect>
+    <rect x="236" y="60" width="40" height="400" fill={`url(#${uid}-fold)`}></rect>
+    {
+      side === 'front' && (
+        <g fill="none" stroke={trim} stroke-linecap="butt">
+          <path d={SASH_BAND} fill={trim} fill-opacity="0.06" stroke="none" />
+          {STRIPES.map((s) => (
+            <path d={s.d} stroke-width={s.w} opacity={s.o} />
+          ))}
+        </g>
+      )
+    }
+    <rect width="400" height="480" fill={`url(#${uid}-edge)`}></rect>
+  </g>
+
+  <!-- armhole seams -->
+  <path d={SEAMS} stroke="#000" stroke-opacity="0.25" stroke-width="1.5" fill="none"></path>
+
+  <!-- cuffs + hem -->
+  <path d={CUFFS} fill={trim}></path>
+  <path d={HEM} stroke={trim} stroke-width="3" fill="none" opacity="0.9"></path>
+
+  <!-- collar -->
+  <path d={`${neck} Z`} fill="#000" fill-opacity="0.4"></path>
+  <path d={neck} stroke={trim} stroke-width="9" fill="none" stroke-linecap="round"></path>
+
+  {
+    side === 'front' ? (
+      <polygon points={CHEST_STAR} fill={trim} />
+    ) : (
+      <ShirtBackPrint name={name} number={number} signed={signed} trim={trim} />
+    )
+  }
+</svg>
+
+<!-- Global (not scoped) on purpose: scoped styles would stamp a data attribute on
+     every SVG node. Everything is namespaced under .shirt. -->
+<style is:global>
+  .shirt {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+
+    .back text {
+      font-family: var(--font-display);
+      font-stretch: 75%;
+    }
+
+    .sig {
+      stroke-dasharray: 1 1;
+      stroke-dashoffset: 1;
+      opacity: 0;
+    }
+  }
+
+  [data-flipped='true'] .shirt .sig {
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1.5s var(--ease-in-out) 0.6s;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+</style>

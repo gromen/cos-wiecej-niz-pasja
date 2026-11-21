@@ -1,0 +1,299 @@
+---
+/**
+ * „Szatnia” – the real cut-out shirts hanging side by side on a rail.
+ *
+ * Base (no JS / reduced motion / touch): a native horizontal scroller of links – momentum,
+ * trackpad and keyboard scrolling are the browser's own. rack.ts adds the sway, mouse drag,
+ * wheel mapping and arrow-key focus. Hover/focus lifts a shirt, turns it round (3D flip
+ * front → back) and drops a museum tag from the hook.
+ */
+import Hanger, { type HangerStrings } from './szatnia/Hanger.astro';
+import type { ShirtEntry } from '../../lib/shirts';
+
+export interface SzatniaStrings extends HangerStrings {
+  kicker: string;
+  title: string;
+  /** `{from}` / `{to}` = first / last Instagram post number on the rail. */
+  sub: string;
+  hintPointer: string;
+  hintTouch: string;
+  stripLabel: string;
+}
+
+interface Props {
+  shirts: ShirtEntry[];
+  strings: SzatniaStrings;
+}
+
+const { shirts, strings } = Astro.props;
+
+/* Only shirts with a real front cut-out hang here (newest post first, as getShirts sorts them). */
+const items = shirts.filter(({ data }) => !data.draft && data.images?.front);
+const posts = items.map(({ data }) => data.igPost).filter((n): n is number => n !== undefined);
+const sub = strings.sub
+  .replace('{from}', String(posts.length ? Math.min(...posts) : ''))
+  .replace('{to}', String(posts.length ? Math.max(...posts) : ''));
+---
+
+{
+  items.length > 0 && (
+    <section class="szatnia" aria-labelledby="szatnia-title" data-szatnia>
+      <header class="head">
+        <span class="sash" aria-hidden="true" />
+        <p class="kicker">{strings.kicker}</p>
+        <h2 id="szatnia-title" class="title">
+          {strings.title}
+        </h2>
+        <p class="sub">{sub}</p>
+      </header>
+
+      <div class="rack">
+        <div class="strip" tabindex="0" role="region" aria-label={strings.stripLabel} data-rack>
+          <ul class="rail" role="list">
+            {items.map((entry, i) => (
+              <Hanger entry={entry} index={i} strings={strings} />
+            ))}
+          </ul>
+        </div>
+        <p class="hint" aria-hidden="true">
+          <span class="hint-pointer">{strings.hintPointer}</span>
+          <span class="hint-touch">{strings.hintTouch}</span>
+        </p>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .szatnia {
+    --w: min(58vw, 15rem);
+    --hook-h: 3rem;
+    --pad-top: 1.25rem;
+    --gap: 0.25rem;
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    padding-block: 14svh 10svh;
+    background:
+      radial-gradient(60% 45% at 50% 62%, rgb(22 68 115 / 0.55), transparent 70%),
+      var(--c-ink);
+    color: var(--c-white);
+    /* Below the fold on load: skip its rendering until it approaches the viewport. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 100svh;
+  }
+
+  /* ── Heading ── */
+  .head {
+    position: relative;
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    padding-inline: var(--gutter);
+    margin-block-end: 3rem;
+  }
+
+  /* Club sash: red band with white edges, cutting diagonally behind the title. */
+  .sash {
+    position: absolute;
+    z-index: -1;
+    inset-block-start: 42%;
+    inset-inline: -20%;
+    block-size: clamp(3.5rem, 13vw, 9rem);
+    background: linear-gradient(var(--c-white) 0 7%, var(--c-red) 7% 93%, var(--c-white) 93%);
+    rotate: -7deg;
+    transform-origin: 30% 50%;
+  }
+
+  .kicker {
+    --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6'/%3E%3C/svg%3E");
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+
+    &::before {
+      content: '';
+      inline-size: 0.9em;
+      block-size: 0.9em;
+      background: currentColor;
+      mask: var(--star) center / contain no-repeat;
+    }
+  }
+
+  .title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-mega);
+    font-weight: 900;
+    font-stretch: 112%;
+    line-height: 0.86;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  .sub {
+    margin: 0;
+    max-inline-size: 40ch;
+    padding: 0.35rem 0.6rem 0.3rem;
+    background: var(--c-ink);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-mist);
+  }
+
+  /* ── Rack ── */
+  .rack {
+    position: relative;
+
+    /* The rail: a thin steel bar through every hook, fixed while the hangers slide along it. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset-inline: 0;
+      inset-block-start: calc(var(--pad-top) + var(--hook-h) * 0.13 - 2px);
+      block-size: 4px;
+      background: linear-gradient(#e6edf2, #7d8f9e 60%, #3c4a57);
+      box-shadow: 0 6px 10px rgb(0 0 0 / 0.45);
+    }
+  }
+
+  .strip {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* The scroller itself is a tab stop: ring inside so the overflow clip can't hide it. */
+    &:focus-visible {
+      outline-offset: -4px;
+      box-shadow: none;
+    }
+
+    &[data-swaying] :global([data-swing]) {
+      will-change: rotate;
+    }
+
+    &[data-dragging] {
+      cursor: grabbing;
+      user-select: none;
+
+      & :global(a) {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  .rail {
+    display: flex;
+    gap: var(--gap);
+    inline-size: max-content;
+    margin: 0;
+    /* Room for the sway (hems swing out) and the hover scale. */
+    padding: var(--pad-top) max(var(--gutter), 2.75rem) 3rem;
+    list-style: none;
+  }
+
+  .hint {
+    margin: 0;
+    padding-inline: var(--gutter);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-mist);
+  }
+
+  .hint-pointer {
+    display: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .strip {
+      cursor: grab;
+    }
+
+    .hint-pointer {
+      display: inline;
+    }
+
+    .hint-touch {
+      display: none;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .szatnia {
+      --w: 16rem;
+      --hook-h: 3.5rem;
+      --gap: 1rem;
+    }
+
+    .head {
+      justify-items: center;
+      text-align: center;
+    }
+
+    .hint {
+      text-align: center;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .szatnia {
+      --w: 19rem;
+      --hook-h: 4rem;
+      --gap: 1.5rem;
+    }
+  }
+
+  @keyframes stretch {
+    from {
+      font-stretch: 62%;
+    }
+    to {
+      font-stretch: 125%;
+    }
+  }
+
+  @keyframes sash-in {
+    from {
+      scale: 0 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .title {
+        animation: stretch linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 50%;
+      }
+
+      .sash {
+        animation: sash-in linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 40%;
+      }
+    }
+  }
+</style>
+
+<script>
+  import { initRack } from './szatnia/rack';
+
+  document.querySelectorAll<HTMLElement>('[data-szatnia]').forEach((root) => initRack(root));
+</script>

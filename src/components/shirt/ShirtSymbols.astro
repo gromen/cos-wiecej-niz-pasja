@@ -1,0 +1,85 @@
+---
+/**
+ * Placeholder-shirt sprite: render ONCE per page, then draw each shirt with <ShirtUse>.
+ * One <symbol> per side holds everything that is the same for every shirt (body, folds,
+ * weave, sash, seams, cuffs, collar, star); colours come from the `--body` / `--trim`
+ * custom properties set on each <ShirtUse>, which inherit into the <use> shadow tree.
+ * Not `display: none` – some engines then drop the gradients/patterns it references.
+ */
+import {
+  BODY,
+  CHEST_STAR,
+  CUFFS,
+  HEM,
+  NECK_BACK,
+  NECK_FRONT,
+  SASH_BAND,
+  SEAMS,
+  STRIPES,
+  SYMBOL_ID,
+  VIEWBOX,
+} from './geometry';
+
+const id = (name: string): string => `shirt-sym-${name}`;
+const sides = ['front', 'back'] as const;
+---
+
+<svg class="shirt-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id={id('clip')}><path d={BODY}></path></clipPath>
+    <linearGradient id={id('edge')} x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity="0.38"></stop>
+      <stop offset="0.2" stop-color="#000" stop-opacity="0"></stop>
+      <stop offset="0.8" stop-color="#000" stop-opacity="0"></stop>
+      <stop offset="1" stop-color="#000" stop-opacity="0.38"></stop>
+    </linearGradient>
+    <linearGradient id={id('fold')} x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity="0"></stop>
+      <stop offset="0.5" stop-color="#000" stop-opacity="0.13"></stop>
+      <stop offset="1" stop-color="#000" stop-opacity="0"></stop>
+    </linearGradient>
+    <pattern id={id('weave')} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="4" height="1" fill="#000" opacity="0.1"></rect>
+    </pattern>
+
+    {
+      sides.map((side) => {
+        const neck = side === 'front' ? NECK_FRONT : NECK_BACK;
+        return (
+          <symbol id={SYMBOL_ID[side]} viewBox={VIEWBOX}>
+            <path d={BODY} style="fill:var(--body)" />
+            <g clip-path={`url(#${id('clip')})`}>
+              <rect width="400" height="480" fill={`url(#${id('weave')})`} />
+              <rect x="130" y="40" width="46" height="420" fill={`url(#${id('fold')})`} />
+              <rect x="236" y="60" width="40" height="400" fill={`url(#${id('fold')})`} />
+              {side === 'front' && (
+                <g style="stroke:var(--trim)" fill="none">
+                  <path d={SASH_BAND} style="fill:var(--trim)" fill-opacity="0.06" stroke="none" />
+                  {STRIPES.map((s) => (
+                    <path d={s.d} stroke-width={s.w} opacity={s.o} />
+                  ))}
+                </g>
+              )}
+              <rect width="400" height="480" fill={`url(#${id('edge')})`} />
+            </g>
+            <path d={SEAMS} stroke="#000" stroke-opacity="0.25" stroke-width="1.5" fill="none" />
+            <path d={CUFFS} style="fill:var(--trim)" />
+            <path d={HEM} style="stroke:var(--trim)" stroke-width="3" fill="none" opacity="0.9" />
+            <path d={`${neck} Z`} fill="#000" fill-opacity="0.4" />
+            <path d={neck} style="stroke:var(--trim)" stroke-width="9" fill="none" stroke-linecap="round" />
+            {side === 'front' && <polygon points={CHEST_STAR} style="fill:var(--trim)" />}
+          </symbol>
+        );
+      })
+    }
+  </defs>
+</svg>
+
+<style is:global>
+  .shirt-sprite {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
+    overflow: hidden;
+  }
+</style>

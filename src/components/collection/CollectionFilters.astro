@@ -1,0 +1,682 @@
+---
+/**
+ * Filter UI. Renders three siblings (must be direct children of the element that also
+ * wraps the grid, so the sticky bar stays stuck through the whole list):
+ *  - `.bar`         sticky: search, count, reset, „Filtry” button
+ *  - `.facets-home` chip groups + toggles + sort (inline on ≥48rem)
+ *  - `<dialog>`     bottom sheet on phones – the runtime moves `.facets` into it on open
+ * All controls belong to one <form> via the `form` attribute, wherever they live.
+ */
+import type { Facet } from './model';
+import type { CollectionStrings } from './strings';
+
+interface Props {
+  strings: CollectionStrings['filters'];
+  facets: Facet[];
+  total: number;
+  signedCount: number;
+  describedCount: number;
+}
+
+const { strings, facets, total, signedCount, describedCount } = Astro.props;
+const FORM = 'collection-filters';
+const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortOptions, string][];
+---
+
+<div class="bar" data-bar>
+  <search class="bar__inner" aria-label={strings.region}>
+    <form id={FORM} class="bar__form" autocomplete="off" data-form>
+      <label class="field">
+        <span class="visually-hidden">{strings.search}</span>
+        <svg class="field__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="10.5" cy="10.5" r="6.5"></circle>
+          <path d="M15.5 15.5 21 21"></path>
+        </svg>
+        <input
+          class="field__input"
+          type="search"
+          name="q"
+          placeholder={strings.searchPlaceholder}
+          enterkeyhint="search"
+          spellcheck="false"
+          autocapitalize="off"
+          autocorrect="off"
+        />
+      </label>
+
+      <p class="bar__count" aria-hidden="true">
+        <span data-count-shown>{total}</span><span class="bar__total">/{total}</span>
+      </p>
+
+      <button type="button" class="bar__reset" data-reset hidden>{strings.reset}</button>
+
+      <button type="button" class="bar__open" data-sheet-open>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M3 7h11M18 7h3M3 17h4M11 17h10"></path>
+          <circle cx="16" cy="7" r="2.2"></circle>
+          <circle cx="9" cy="17" r="2.2"></circle>
+        </svg>
+        <span class="bar__open-label">{strings.open}</span>
+        <span class="bar__badge" data-active-count hidden>
+          <span data-active-num>0</span><span class="visually-hidden"> {strings.activeCount}</span>
+        </span>
+      </button>
+    </form>
+  </search>
+</div>
+
+<div class="facets-home" id="collection-facets" data-facets-home>
+  <div class="facets" data-facets>
+    {
+      facets.map((facet) => (
+        <fieldset class="group">
+          <legend class="group__legend">{facet.legend}</legend>
+          <div class="chips">
+            {facet.options.map((option) => (
+              <label class="chip">
+                <input type="checkbox" name={facet.group} value={option.value} form={FORM} />
+                {option.swatch && <span class="chip__swatch" style={`--sw:${option.swatch}`} />}
+                <span class="chip__label">{option.label}</span>
+                <span class="chip__count" data-facet-count={`${facet.group}:${option.value}`}>
+                  {option.count}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ))
+    }
+
+    <fieldset class="group group--options">
+      <legend class="group__legend">{strings.groups.options}</legend>
+      <div class="options">
+        <label class="switch">
+          <input type="checkbox" role="switch" name="signed" value="1" form={FORM} />
+          <span class="switch__label">★ {strings.signed}</span>
+          <span class="chip__count" data-facet-count="signed">{signedCount}</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" role="switch" name="described" value="1" form={FORM} />
+          <span class="switch__label">{strings.described}</span>
+          <span class="chip__count" data-facet-count="described">{describedCount}</span>
+        </label>
+        <label class="sort">
+          <span class="sort__label">{strings.sort}</span>
+          <select name="sort" form={FORM}>
+            {sorts.map(([value, label], i) => <option value={value} selected={i === 0}>{label}</option>)}
+          </select>
+        </label>
+      </div>
+    </fieldset>
+  </div>
+</div>
+
+<dialog id="collection-sheet" class="sheet" aria-labelledby="collection-sheet-title" data-sheet closedby="any">
+  <div class="sheet__head">
+    <h2 id="collection-sheet-title" class="sheet__title">{strings.sheetTitle}</h2>
+    <button type="button" class="sheet__close" data-sheet-close aria-label={strings.close}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+    </button>
+  </div>
+  <div class="sheet__body" data-sheet-body></div>
+  <div class="sheet__foot">
+    <button type="button" class="btn btn--ghost" data-reset>{strings.reset}</button>
+    <button type="button" class="btn btn--primary" data-sheet-close data-apply>{strings.open}</button>
+  </div>
+</dialog>
+
+<style>
+  /* Without JS the grid simply lists everything – hide controls that could not work. */
+  :global(:root:not([data-js])) :is(.bar, .facets-home) {
+    display: none;
+  }
+
+  .bar {
+    position: sticky;
+    /* Parks just below the floating site header while it is shown (0 once it hides). */
+    inset-block-start: var(--hdr-offset, 0px);
+    z-index: 30;
+    container-type: scroll-state;
+    padding: 0.55rem var(--gutter);
+    background: rgb(5 15 26 / 0.95);
+    border-block-end: 1px solid var(--line);
+    view-transition-name: collection-bar;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: inset-block-start 420ms var(--ease-out);
+    }
+  }
+
+  .bar__form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .field {
+    position: relative;
+    flex: 1;
+    min-inline-size: 0;
+  }
+
+  .field__icon {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 0.8rem;
+    inline-size: 1.05rem;
+    translate: 0 -50%;
+    fill: none;
+    stroke: var(--fg-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  .field__input {
+    inline-size: 100%;
+    block-size: 2.75rem;
+    padding: 0 0.9rem 0 2.5rem;
+    border: 1px solid var(--line-control);
+    border-radius: 999px;
+    background: rgb(250 250 250 / 0.05);
+    color: var(--fg);
+    /* ≥16px – no iOS zoom on focus. */
+    font: 500 1rem/1 var(--font-body);
+    transition:
+      border-color var(--dur-fast),
+      background-color var(--dur-fast);
+
+    &::placeholder {
+      color: var(--fg-muted);
+      opacity: 0.8;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 1px;
+      border-color: transparent;
+      background: rgb(250 250 250 / 0.09);
+    }
+  }
+
+  .bar__count {
+    display: none;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    [data-count-shown] {
+      font-weight: 700;
+      color: var(--c-white);
+    }
+  }
+
+  .bar__total {
+    color: var(--fg-muted);
+  }
+
+  .bar__reset,
+  .bar__open,
+  .btn,
+  .sheet__close {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-block-size: 2.75rem;
+    padding: 0 1rem;
+    border: 1px solid var(--line-control);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-fast),
+      border-color var(--dur-fast),
+      color var(--dur-fast);
+
+    &:hover {
+      border-color: var(--c-white);
+    }
+
+    svg {
+      inline-size: 1.1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+    }
+  }
+
+  .bar__reset {
+    display: none;
+  }
+
+  .bar__open {
+    background: var(--c-red);
+    border-color: var(--c-red);
+
+    &:hover {
+      background: var(--c-red-bright);
+      border-color: var(--c-red-bright);
+    }
+  }
+
+  .bar__badge {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 1.3rem;
+    block-size: 1.3rem;
+    padding-inline: 0.3rem;
+    border-radius: 999px;
+    background: var(--c-white);
+    color: var(--c-red);
+    font-weight: 700;
+    letter-spacing: 0;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  /* ——— Facets ——— */
+  .facets-home {
+    display: none;
+    /* „Filtry” jumps here: land below the sticky bar (≈ 2.75rem control + padding + border). */
+    scroll-margin-block-start: calc(5rem + var(--hdr-offset, 0px));
+  }
+
+  .facets {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .group {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .group__legend {
+    margin-block-end: 0.6rem;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-block-size: 2.5rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--line-control);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color var(--dur-fast),
+      border-color var(--dur-fast),
+      color var(--dur-fast);
+
+    input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    &:hover {
+      border-color: rgb(250 250 250 / 0.6);
+    }
+
+    &:has(:focus-visible) {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 2px;
+    }
+
+    &:has(:checked) {
+      border-color: var(--c-white);
+      background: var(--c-white);
+      color: var(--c-ink);
+
+      .chip__count {
+        color: var(--c-red);
+      }
+    }
+
+    /* Zero results with the other filters: still readable, just clearly secondary. */
+    &[data-empty]:not(:has(:checked)) {
+      border-style: dashed;
+      color: var(--fg-muted);
+
+      .chip__swatch {
+        opacity: 0.6;
+      }
+    }
+  }
+
+  .chip__swatch {
+    inline-size: 0.85rem;
+    block-size: 0.85rem;
+    border-radius: 50%;
+    background: var(--sw);
+    box-shadow: inset 0 0 0 1px rgb(250 250 250 / 0.45);
+  }
+
+  .chip__count {
+    color: var(--fg-muted);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .options {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .switch {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-block-size: 2.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+
+    input {
+      position: relative;
+      flex: none;
+      inline-size: 2.5rem;
+      block-size: 1.4rem;
+      margin: 0;
+      border: 1px solid var(--line-control);
+      border-radius: 999px;
+      background: rgb(250 250 250 / 0.16);
+      appearance: none;
+      cursor: pointer;
+      transition: background-color var(--dur-fast);
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset-block: 0.2rem;
+        inset-inline-start: 0.2rem;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--c-white);
+        transition: translate var(--dur-fast) var(--ease-out);
+      }
+
+      &:checked {
+        border-color: var(--c-red);
+        background: var(--c-red);
+
+        &::before {
+          translate: 1.1rem 0;
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--accent-2);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  .sort {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+
+    select {
+      min-block-size: 2.5rem;
+      padding: 0 2.2rem 0 0.85rem;
+      border: 1px solid var(--line-control);
+      border-radius: 999px;
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fafafa' stroke-width='2'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")
+          right 0.7rem center / 1rem no-repeat,
+        rgb(250 250 250 / 0.05);
+      color: var(--fg);
+      font: inherit;
+      /* ≥16px on phones – no iOS zoom. */
+      font-size: 1rem;
+      appearance: none;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid var(--accent-2);
+        outline-offset: 2px;
+      }
+
+      option {
+        background: var(--c-navy-deep);
+      }
+    }
+  }
+
+  /* ——— Bottom sheet (phones) ——— */
+  .sheet {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    max-block-size: min(88svh, 46rem);
+    margin: auto 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 1rem 1rem 0 0;
+    background: var(--c-navy-deep);
+    color: var(--fg);
+    box-shadow: 0 -1rem 3rem rgb(0 0 0 / 0.45);
+    translate: 0 100%;
+    transition:
+      translate var(--dur) var(--ease-out),
+      display var(--dur) allow-discrete,
+      overlay var(--dur) allow-discrete;
+
+    &[open] {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      translate: 0 0;
+    }
+
+    &::backdrop {
+      background: rgb(5 15 26 / 0.7);
+      opacity: 0;
+      transition:
+        opacity var(--dur) var(--ease-out),
+        display var(--dur) allow-discrete,
+        overlay var(--dur) allow-discrete;
+    }
+
+    &[open]::backdrop {
+      opacity: 1;
+    }
+  }
+
+  @starting-style {
+    .sheet[open] {
+      translate: 0 100%;
+    }
+
+    .sheet[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  .sheet__head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem var(--gutter) 0.6rem;
+
+    /* Grab handle. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block-start: 0.45rem;
+      inset-inline-start: 50%;
+      inline-size: 2.5rem;
+      block-size: 0.25rem;
+      border-radius: 999px;
+      background: rgb(250 250 250 / 0.25);
+      translate: -50% 0;
+    }
+  }
+
+  .sheet__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 900;
+    font-stretch: 75%;
+    text-transform: uppercase;
+  }
+
+  .sheet__close {
+    padding: 0;
+    inline-size: 2.75rem;
+  }
+
+  .sheet__body {
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 0.75rem var(--gutter) 1.5rem;
+  }
+
+  .sheet__foot {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem;
+    padding: 0.75rem var(--gutter) max(0.75rem, env(safe-area-inset-bottom));
+    border-block-start: 1px solid var(--line);
+  }
+
+  .btn--primary {
+    border-color: var(--c-red);
+    background: var(--c-red);
+    font-weight: 700;
+
+    &:hover {
+      border-color: var(--c-red-bright);
+      background: var(--c-red-bright);
+    }
+  }
+
+  /* ——— Tablet / desktop: chips inline, sheet button only once the bar is stuck ——— */
+  @media (min-width: 48rem) {
+    .bar {
+      background: rgb(5 15 26 / 0.9);
+      backdrop-filter: blur(14px) saturate(1.3);
+    }
+
+    .bar__form {
+      gap: 0.85rem;
+    }
+
+    .field {
+      flex: 0 1 26rem;
+      margin-inline-end: auto;
+    }
+
+    .bar__count {
+      display: block;
+    }
+
+    .bar__reset:not([hidden]) {
+      display: inline-flex;
+    }
+
+    .bar__open {
+      display: none;
+    }
+
+    .facets-home {
+      display: block;
+      padding: 1rem var(--gutter) 1.25rem;
+      border-block-end: 1px solid var(--line);
+    }
+
+    .facets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 2.5rem;
+    }
+
+    .group__legend {
+      margin-block-end: 0.45rem;
+    }
+
+    .chips {
+      gap: 0.35rem;
+    }
+
+    .chip {
+      min-block-size: 2.15rem;
+      padding-inline: 0.75rem;
+    }
+
+    .switch {
+      min-block-size: 2.15rem;
+    }
+
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem 1.5rem;
+    }
+
+    .sort select {
+      min-block-size: 2.15rem;
+      font-size: var(--fs-xs);
+    }
+  }
+
+  /* „Filtry ↑” – jump back to the chips once they have scrolled away. */
+  @media (min-width: 48rem) {
+    @supports (container-type: scroll-state) {
+      @container scroll-state(stuck: top) {
+        .bar__open {
+          display: inline-flex;
+        }
+      }
+    }
+
+    @supports not (container-type: scroll-state) {
+      .bar__open {
+        display: inline-flex;
+      }
+    }
+  }
+</style>

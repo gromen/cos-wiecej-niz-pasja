@@ -1,0 +1,235 @@
+---
+const words = ['COŚ', 'WIĘCEJ', 'NIŻ', 'PASJA'];
+let index = 0;
+const lines = words.map((word) => ({
+  word,
+  chars: [...word].map((char) => ({ char, i: index++ })),
+}));
+
+// Repeated enough times to fill the rotated sash even on very wide (4K) screens.
+const sashPhrase = '★ Biała Gwiazda ★ mecz po meczu ★ koszulka po koszulce';
+const sashRepeats = Array.from({ length: 8 }, (_, i) => i);
+---
+
+<section class="kick" aria-labelledby="kick-title">
+  <svg class="bigstar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+  </svg>
+
+  <p class="eyebrow">
+    <svg class="star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+    </svg>
+    Wisła Kraków · kolekcja meczowych koszulek
+  </p>
+
+  <h1 id="kick-title">
+    <span class="visually-hidden">Coś więcej niż pasja</span>
+    <span class="line" aria-hidden="true">
+      {
+        lines.map(({ chars }) => (
+          <span class="word">
+            {chars.map(({ char, i }) => (
+              <span class="ch" style={`--i:${i}`}>
+                <span class="ghost">{char}</span>
+                <span class="glyph">{char}</span>
+              </span>
+            ))}
+          </span>
+        ))
+      }
+    </span>
+  </h1>
+
+  <div class="sash" aria-hidden="true">
+    {sashRepeats.map(() => <span>{sashPhrase}</span>)}
+  </div>
+</section>
+
+<style>
+  .kick {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    display: grid;
+    align-content: center;
+    gap: 1.25rem;
+    min-block-size: 100svh;
+    padding: 6.5rem var(--gutter) 24svh;
+    background: var(--c-red);
+    color: var(--c-white);
+
+    /* Opening sweep: a white diagonal flash crossing the screen before the letters land. */
+    &::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset-block: -20%;
+      inset-inline-start: 0;
+      inline-size: 38vmax;
+      background: var(--c-white);
+      transform: translateX(-60vw) skewX(-18deg);
+      animation: sweep 1100ms var(--ease-in-out) 150ms both;
+    }
+  }
+
+  .bigstar {
+    position: absolute;
+    z-index: -1;
+    inset-inline-end: -18vmin;
+    inset-block-start: 6svh;
+    inline-size: 62vmin;
+    fill: none;
+    stroke: var(--c-white);
+    stroke-width: 0.15;
+    opacity: 0.22;
+    animation: star-in 1400ms var(--ease-out) 300ms both;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .star {
+    inline-size: 1.15em;
+    block-size: 1.15em;
+    fill: var(--c-white);
+    animation: star-in 900ms var(--ease-out) 400ms both;
+  }
+
+  h1 {
+    margin: 0;
+  }
+
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.28em;
+    font-family: var(--font-display);
+    font-size: min(15vw, 17svh);
+    line-height: 0.84;
+    text-transform: uppercase;
+  }
+
+  .word {
+    display: inline-flex;
+  }
+
+  /* The ghost reserves the final (wide, black) width so animating the glyph never shifts layout. */
+  .ch {
+    position: relative;
+    display: inline-block;
+  }
+
+  .ghost,
+  .glyph {
+    font-stretch: 125%;
+    font-weight: 900;
+  }
+
+  .ghost {
+    visibility: hidden;
+  }
+
+  .glyph {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    animation: punch 760ms cubic-bezier(0.2, 1.25, 0.35, 1) calc(520ms + var(--i) * 60ms) both;
+  }
+
+  .sash {
+    position: absolute;
+    inset-inline: -10%;
+    inset-block-end: 9svh;
+    z-index: -1;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    block-size: clamp(3rem, 9vmax, 6.5rem);
+    background: var(--c-white);
+    color: var(--c-red);
+    transform: rotate(-7deg);
+    animation: sash-in 900ms var(--ease-out) 800ms both;
+
+    & span {
+      flex: none;
+      padding-inline: 2rem;
+      font-family: var(--font-mono);
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .kick {
+      padding-block: 5rem 20svh;
+    }
+
+    .line {
+      font-size: min(10.5vw, 22svh);
+    }
+  }
+
+  @keyframes sweep {
+    to {
+      transform: translateX(130vw) skewX(-18deg);
+    }
+  }
+
+  @keyframes punch {
+    from {
+      opacity: 0;
+      transform: translateY(45%) scaleY(1.35);
+      font-stretch: 62%;
+      font-weight: 300;
+    }
+    55% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      font-stretch: 125%;
+      font-weight: 900;
+    }
+  }
+
+  @keyframes sash-in {
+    from {
+      transform: translateX(-110%) rotate(-7deg);
+    }
+  }
+
+  @keyframes star-in {
+    from {
+      opacity: 0;
+      transform: rotate(-180deg) scale(0.2);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kick::before {
+      animation: none;
+      transform: translateX(-100vw);
+    }
+
+    .glyph,
+    .sash,
+    .bigstar,
+    .star {
+      animation: none;
+    }
+  }
+</style>

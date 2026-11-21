@@ -1,0 +1,133 @@
+---
+import { COLLECTION_SIZE } from '../../data/collection';
+---
+
+<section class="stub" aria-labelledby="stub-title">
+  <p class="eyebrow">Rozdział 01</p>
+  <h3 id="stub-title">Każda koszulka ma swoją historię</h3>
+  <p class="lead">
+    Od szatni po trybunę – grane, przepocone, często podpisane. Tu zaczyna się kolekcja: zawodnik, numer, mecz,
+    wspomnienie.
+  </p>
+
+  <ul class="tiles">
+    <li class="tile">
+      <span class="tile__value">{COLLECTION_SIZE}</span>
+      <span class="tile__label">koszulek</span>
+    </li>
+    <li class="tile">
+      <span class="tile__value">2008/09–2026/27</span>
+      <span class="tile__label">sezony</span>
+    </li>
+    <li class="tile">
+      <svg class="tile__star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+      </svg>
+      <span class="tile__label">z autografami</span>
+    </li>
+  </ul>
+</section>
+
+<style>
+  .stub {
+    display: grid;
+    gap: 1.25rem;
+    justify-items: start;
+    padding: 10svh var(--gutter) 16svh;
+    background: var(--c-white);
+    color: var(--c-ink);
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-red);
+  }
+
+  h3 {
+    margin: 0;
+    max-inline-size: 16ch;
+    font-size: var(--fs-xl);
+    font-weight: 900;
+    font-stretch: 80%;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  .lead {
+    margin: 0;
+    max-inline-size: 52ch;
+    font-size: var(--fs-md);
+    color: var(--c-navy);
+  }
+
+  .tiles {
+    display: grid;
+    gap: 0.75rem;
+    inline-size: 100%;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tile {
+    display: grid;
+    align-content: space-between;
+    gap: 0.5rem;
+    min-block-size: 9rem;
+    padding: 1.1rem 1.25rem;
+    border: 2px solid var(--c-red);
+    color: var(--c-red);
+
+    &:first-child {
+      background: var(--c-red);
+      color: var(--c-white);
+    }
+  }
+
+  .tile__value {
+    font-size: var(--fs-xl);
+    font-weight: 900;
+    font-stretch: 70%;
+    line-height: 0.9;
+  }
+
+  .tile__star {
+    inline-size: clamp(2.2rem, 1.6rem + 3vw, 4.5rem);
+    fill: var(--c-red);
+  }
+
+  .tile__label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 48rem) {
+    .tiles {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  @keyframes tile-in {
+    from {
+      opacity: 0;
+      transform: translateY(2rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .tile {
+        animation: tile-in linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 80%;
+      }
+    }
+  }
+</style>

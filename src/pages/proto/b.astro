@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/site/SiteHeader.astro';
+import Grain from '../../components/proto-b/Grain.astro';
+import Kickoff from '../../components/proto-b/Kickoff.astro';
+import Counter from '../../components/proto-b/Counter.astro';
+import Terrace from '../../components/proto-b/Terrace.astro';
+import Flip from '../../components/proto-b/Flip.astro';
+import Stub from '../../components/proto-b/Stub.astro';
+import { COLLECTION_SIZE } from '../../data/collection';
+---
+
+<BaseLayout
+  noindex
+  title="Trybuna – prototyp B | Coś więcej niż pasja"
+  themeColor="#c6102e"
+  description={`Kolekcja ${COLLECTION_SIZE} meczowych koszulek Wisły Kraków – Coś więcej niż pasja. Prototyp hero B: Trybuna.`}
+>
+  <Grain />
+  <!-- Fixed floating bar over the kick-off (its top padding already clears the bar). -->
+  <SiteHeader tone="red" current="start" overlay />
+  <main class="pb-page">
+    <Kickoff />
+    <Counter />
+    <Terrace />
+    <Flip />
+    <Stub />
+  </main>
+</BaseLayout>
+
+<style is:global>
+  /* Registered so the 0→COLLECTION_SIZE counter can be animated by pure CSS.
+     The shown value always comes from Counter's inline --target, never from this initial value. */
+  @property --n {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 0;
+  }
+
+  /* Scoped to this page and more specific than base.css `body`, so source order doesn't matter. */
+  html:has(.pb-page) body {
+    background: var(--c-red);
+  }
+</style>
+
+<script>
+  import '../../components/proto-b/motion';
+</script>

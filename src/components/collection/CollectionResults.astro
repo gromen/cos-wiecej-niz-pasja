@@ -1,0 +1,224 @@
+---
+/**
+ * Grid wrapper: list landmark, empty state, polite live region,
+ * plus the (global) view-transition choreography used while filtering.
+ */
+import type { CollectionStrings } from './strings';
+
+interface Props {
+  strings: CollectionStrings['results'];
+}
+
+const { strings } = Astro.props;
+---
+
+<section class="results" id="kolekcja-lista" aria-labelledby="results-title" data-results>
+  <!-- tabindex=-1: focus target after „Wyczyść filtry” in the empty state. -->
+  <h2 id="results-title" class="visually-hidden" tabindex="-1">{strings.heading}</h2>
+  <ul class="grid" data-grid>
+    <slot />
+  </ul>
+
+  <div class="empty" data-empty-state hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+    </svg>
+    <p class="empty__title">{strings.emptyTitle}</p>
+    <p class="empty__text">{strings.emptyText}</p>
+    <button type="button" class="empty__reset" data-reset>{strings.emptyReset}</button>
+  </div>
+
+  <p class="visually-hidden" aria-live="polite" aria-atomic="true" data-live></p>
+</section>
+
+<style>
+  .results {
+    padding: 1.5rem var(--gutter) 4rem;
+  }
+
+  .grid {
+    --cols: 2;
+    --gap: 0.75rem;
+    --body-h: 7.25rem;
+
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    gap: 1.75rem var(--gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .empty {
+    display: grid;
+    justify-items: center;
+    gap: 0.6rem;
+    padding: 3rem 1rem 4rem;
+    text-align: center;
+
+    &[hidden] {
+      display: none;
+    }
+
+    svg {
+      inline-size: 3.5rem;
+      fill: none;
+      stroke: var(--c-red);
+      stroke-width: 0.9;
+      margin-block-end: 0.5rem;
+    }
+  }
+
+  .empty__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 900;
+    font-stretch: 75%;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  .empty__text {
+    margin: 0;
+    color: var(--fg-muted);
+  }
+
+  .empty__reset {
+    margin-block-start: 1rem;
+    min-block-size: 2.75rem;
+    padding: 0 1.4rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--c-red);
+    color: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--c-red-bright);
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .grid {
+      --cols: 3;
+      --gap: 1rem;
+      --body-h: 7.75rem;
+
+      row-gap: 2.25rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .results {
+      padding-block: 2.25rem 6rem;
+    }
+
+    .grid {
+      --cols: 4;
+      --gap: 1.5rem;
+      --body-h: 7rem;
+
+      row-gap: 3rem;
+    }
+  }
+
+  @media (min-width: 96rem) {
+    .grid {
+      --cols: 5;
+    }
+  }
+</style>
+
+<style is:global>
+  /* Restoring a filtered view from the URL: hide everything that shows unfiltered numbers –
+     grid, filter bar (count, chips) and the masthead count – for the few ms before the runtime
+     applies the query (no flash, no CLS). Failsafe reveal if the runtime never removes the flag. */
+  :root[data-restore] :is([data-results], [data-bar], [data-facets-home], [data-count-shown], [data-count-label]) {
+    visibility: hidden;
+    animation: restore-failsafe 0s 1.5s forwards;
+  }
+
+  @keyframes restore-failsafe {
+    to {
+      visibility: visible;
+    }
+  }
+
+  /* ——— Filter choreography (same-document view transition, type „collection-filter”) ———
+     Cards and shirt visuals get names only for the duration of the transition (see collection.ts);
+     the root crossfade is kept short so only the grid seems to move. */
+  :root:active-view-transition-type(collection-filter)::view-transition-group(*.collection-card),
+  :root:active-view-transition-type(collection-filter)::view-transition-group(*.collection-shirt) {
+    animation-duration: 560ms;
+    animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1);
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-old(*.collection-card):only-child,
+  :root:active-view-transition-type(collection-filter)::view-transition-old(*.collection-shirt):only-child {
+    animation: 240ms cubic-bezier(0.4, 0, 1, 1) both collection-card-out;
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-new(*.collection-card):only-child,
+  :root:active-view-transition-type(collection-filter)::view-transition-new(*.collection-shirt):only-child {
+    animation: 420ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both collection-card-in;
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-old(root),
+  :root:active-view-transition-type(collection-filter)::view-transition-new(root) {
+    animation-duration: 180ms;
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-image-pair(collection-count) {
+    overflow: clip;
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-old(collection-count),
+  :root:active-view-transition-type(collection-filter)::view-transition-new(collection-count) {
+    inline-size: auto;
+    block-size: 100%;
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-old(collection-count) {
+    animation: 260ms cubic-bezier(0.4, 0, 1, 1) both collection-count-out;
+  }
+
+  :root:active-view-transition-type(collection-filter)::view-transition-new(collection-count) {
+    animation: 360ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both collection-count-in;
+  }
+
+  @keyframes collection-card-out {
+    to {
+      opacity: 0;
+      scale: 0.88;
+    }
+  }
+
+  @keyframes collection-card-in {
+    from {
+      opacity: 0;
+      scale: 0.9;
+      translate: 0 1.25rem;
+    }
+  }
+
+  @keyframes collection-count-out {
+    to {
+      opacity: 0;
+      translate: 0 -40%;
+    }
+  }
+
+  @keyframes collection-count-in {
+    from {
+      opacity: 0;
+      translate: 0 40%;
+    }
+  }
+</style>

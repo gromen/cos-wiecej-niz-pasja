@@ -1,0 +1,31 @@
+---
+/**
+ * One placeholder shirt drawn from the page sprite (<ShirtSymbols> must be on the page).
+ * Only the per-shirt bits are emitted: colours (as custom properties) and the back print.
+ */
+import ShirtBackPrint from './ShirtBackPrint.astro';
+import { SYMBOL_ID, VIEWBOX } from './geometry';
+
+interface Props {
+  side?: 'front' | 'back';
+  color?: string;
+  trim?: string;
+  name?: string;
+  number?: number | string;
+  signed?: boolean;
+}
+
+const { side = 'front', color = '#c6102e', trim = '#fafafa', name = '', number = '', signed = false } = Astro.props;
+---
+
+<svg
+  class="shirt"
+  viewBox={VIEWBOX}
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden="true"
+  focusable="false"
+  style={`--body:${color};--trim:${trim}`}
+>
+  <use href={`#${SYMBOL_ID[side]}`}></use>
+  {side === 'back' && <ShirtBackPrint name={name} number={number} signed={signed} trim="var(--trim)" />}
+</svg>

@@ -1,0 +1,199 @@
+---
+import { wall } from '../../data/collection';
+
+const shirts = wall.flat().filter((shirt) => !shirt.player.includes('?'));
+const bands = [
+  { kind: 'white', items: shirts.filter((_, i) => i % 2 === 0) },
+  { kind: 'deep', items: shirts.filter((_, i) => i % 2 === 1).reverse() },
+];
+---
+
+<section class="terrace" aria-labelledby="terrace-title">
+  <h2 id="terrace-title" class="visually-hidden">Na trybunie: nazwiska z kolekcji</h2>
+  <ul class="visually-hidden">
+    {shirts.map((shirt) => <li>{shirt.player} {shirt.number}</li>)}
+  </ul>
+
+  {
+    bands.map(({ kind, items }) => (
+      <div class={`band band--${kind}`} aria-hidden="true" data-marquee>
+        <div class="track">
+          {[0, 1].map(() => (
+            <div class="set">
+              {items.map((shirt) => (
+                <span class="item">
+                  <span class="name">{shirt.player}</span>
+                  <span class="no">{shirt.number}</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    ))
+  }
+
+  <!-- WCAG 2.2.2: moving content that lasts > 5 s needs a pause. Revealed by motion.ts only when the marquees run. -->
+  <button class="pause" type="button" aria-pressed="false" hidden data-marquee-toggle>Pauza animacji</button>
+</section>
+
+<style>
+  .terrace {
+    --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6'/%3E%3C/svg%3E");
+    position: relative;
+    display: grid;
+    gap: clamp(0.4rem, 2vw, 1.25rem);
+    padding-block: 14svh;
+    overflow: clip;
+    background: var(--c-red);
+    color: var(--c-white);
+  }
+
+  .band {
+    inline-size: 112%;
+    margin-inline: -6%;
+    overflow: hidden;
+    padding-block: 0.3em 0.2em;
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 9vw, 6.5rem);
+    font-weight: 900;
+    font-stretch: 70%;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .band--white {
+    --stroke: var(--c-red);
+    background: var(--c-white);
+    color: var(--c-red);
+    transform: rotate(-2.2deg);
+  }
+
+  .band--deep {
+    --stroke: var(--c-white);
+    --t: 80s;
+    background: var(--c-red-deep);
+    color: var(--c-white);
+    transform: rotate(1.8deg);
+
+    & .track {
+      animation-direction: reverse;
+    }
+  }
+
+  .track {
+    display: flex;
+    inline-size: max-content;
+    animation: marquee var(--t, 62s) linear infinite;
+  }
+
+  .set {
+    display: flex;
+    flex: none;
+  }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    padding-inline: 0.3em;
+
+    &::after {
+      content: '';
+      inline-size: 0.5em;
+      block-size: 0.5em;
+      margin-inline-start: 0.3em;
+      background: currentColor;
+      mask: var(--star) center / contain no-repeat;
+    }
+  }
+
+  .no {
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--stroke);
+  }
+
+  /* Small ticket-stub toggle, absolutely placed in the bottom padding so revealing it never shifts layout. */
+  .pause {
+    position: absolute;
+    z-index: 1;
+    inset-block-end: max(0.75rem, 4svh);
+    inset-inline-end: var(--gutter);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0;
+    padding: 0.45em 0.8em;
+    border: 1.5px solid var(--c-white);
+    border-radius: 0;
+    background: var(--c-red);
+    color: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast);
+
+    /* Icon: two bars (pause) / triangle (play). Pure shapes, so nothing extra is announced. */
+    &::before {
+      content: '';
+      inline-size: 0.7em;
+      block-size: 0.8em;
+      background: linear-gradient(90deg, currentColor 35%, transparent 35% 65%, currentColor 65%);
+    }
+
+    &[aria-pressed='true']::before {
+      background: currentColor;
+      clip-path: polygon(0 0, 100% 50%, 0 100%);
+    }
+
+    &:hover {
+      background: var(--c-white);
+      color: var(--c-red);
+    }
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .band {
+      /* The band overhangs the section by 6% each side – pad that back so wrapped names stay on screen. */
+      padding-inline: calc(6% + var(--gutter));
+      font-size: clamp(1.25rem, 5vw, 2.25rem);
+    }
+
+    .track {
+      inline-size: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: none;
+    }
+
+    .set {
+      flex: 0 1 auto;
+      flex-wrap: wrap;
+      justify-content: center;
+
+      &:nth-child(2) {
+        display: none;
+      }
+    }
+
+    .pause {
+      display: none;
+    }
+  }
+</style>

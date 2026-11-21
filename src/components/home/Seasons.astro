@@ -1,0 +1,594 @@
+---
+/**
+ * „Sezony” – the real shirts grouped by season, oldest → newest.
+ *
+ * Base layout (mobile, no JS, reduced motion, no scroll-driven animations):
+ *   a native horizontal scroll-snap strip – one season per card, thumb-friendly.
+ * Desktop + motion + `animation-timeline` support:
+ *   the section is pinned and vertical scroll drives the strip sideways
+ *   (pure CSS, a view-timeline on the section). Year type stretches as it passes.
+ *
+ * The shirt visual carries the shared `view-transition-name`, so clicking morphs
+ * into the detail page. The featured cards further down reuse the same names –
+ * home.ts moves the name to whichever element was clicked (never two at once).
+ */
+import ShirtFace from '../shirt/ShirtFace.astro';
+import { lastName, shirtHref, shirtTransitionName, type ShirtEntry } from '../../lib/shirts';
+
+export interface SeasonsStrings {
+  kicker: string;
+  hint: string;
+  approxPrefix: string;
+  number: string;
+  open: string;
+  navLabel: string;
+}
+
+interface Props {
+  shirts: ShirtEntry[];
+  strings: SeasonsStrings;
+  /** id of the heading (rendered by the Flip right before this section). */
+  labelledby: string;
+}
+
+const { shirts, strings, labelledby } = Astro.props;
+
+interface Stop {
+  key: string;
+  start: number;
+  big: string;
+  small: string;
+  prefix: string;
+  shirts: ShirtEntry[];
+}
+
+const bySeason = new Map<string, Stop>();
+shirts
+  .filter(({ data }) => !data.draft && data.seasonStart !== undefined)
+  .forEach((entry) => {
+    const { season = '', seasonStart = 0, seasonApprox } = entry.data;
+    const key = season || String(seasonStart);
+    const stop = bySeason.get(key);
+    if (stop) {
+      stop.shirts.push(entry);
+      return;
+    }
+    const split = /^(\d{4})\/(\d{2})$/.exec(season);
+    const approx = /(\d{2}\/\d{2})/.exec(season);
+    bySeason.set(key, {
+      key,
+      start: seasonStart,
+      big: split ? split[1] : seasonApprox && approx ? approx[1] : season,
+      small: split ? `/${split[2]}` : '',
+      prefix: seasonApprox ? strings.approxPrefix : '',
+      shirts: [entry],
+    });
+  });
+
+const stops = [...bySeason.values()].sort((a, b) => a.start - b.start);
+stops.forEach((stop) => stop.shirts.sort((a, b) => (a.data.igPost ?? 0) - (b.data.igPost ?? 0)));
+/*
+ * Rendered shirt width per layout (keep in sync with the CSS below):
+ *   < 40rem   stop = min(84vw, 26rem); one shirt = 78% of it, two = half each
+ *   40–64rem  stop = min(60vw, 30rem)
+ *   ≥ 64rem   pinned: 44svh × 82% (one) or 66svh / 2 (two) – height-driven, hence vh
+ */
+const sizesOne = '(min-width: 64rem) 36vh, (min-width: 40rem) 23rem, 66vw';
+const sizesTwo = '(min-width: 64rem) 33vh, (min-width: 40rem) 15rem, 41vw';
+const pad = (n: number): string => String(n).padStart(2, '0');
+const slug = (stop: Stop): string => `sezon-${stop.start}`;
+const fact = (entry: ShirtEntry): string => {
+  const { competition, match } = entry.data;
+  return [competition, match?.pl].filter(Boolean).join(' – ');
+};
+---
+
+<section
+  class="seasons"
+  aria-labelledby={labelledby}
+  style={`--stops:${stops.length}`}
+  data-seasons
+>
+  <div class="pin">
+    <div class="bar">
+      <p class="kicker">{strings.kicker}</p>
+      <nav class="index" aria-label={strings.navLabel}>
+        <ol>
+          {
+            stops.map((stop, i) => (
+              <li>
+                <a href={`#${slug(stop)}`} data-stop-link={i}>
+                  {stop.prefix && `${stop.prefix} `}
+                  {stop.big}
+                  {stop.small}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+      <div class="progress" aria-hidden="true"><span></span></div>
+    </div>
+
+    <div class="strip" data-strip>
+      <ol class="track" role="list">
+        {
+          stops.map((stop, i) => (
+            <li class="stop" id={slug(stop)} style={`--i:${i}`} data-stop>
+              <p class="no" aria-hidden="true">
+                {pad(i + 1)} / {pad(stops.length)}
+              </p>
+              <h3 class="year">
+                {stop.prefix && <span class="prefix">{stop.prefix}</span>}
+                <span class="big">{stop.big}</span>
+                {stop.small && <span class="small">{stop.small}</span>}
+              </h3>
+
+              <ul class="shirts" role="list" data-count={stop.shirts.length}>
+                {stop.shirts.map((entry) => {
+                  const vt = shirtTransitionName(entry.id);
+                  return (
+                    <li class="shirt-item">
+                      <a class="shirt-link" href={shirtHref(entry.id)} data-shirt-link data-astro-prefetch="hover">
+                        {/*
+                          Static name on purpose: on back-navigation from a detail page (no click
+                          happened here) the browser needs a pre-rendered target to morph into.
+                          Featured's copies only carry `data-vt`; home.ts moves the name to the
+                          clicked element and sets `none` on the others, so it's never duplicated.
+                        */}
+                        <span class="visual" data-vt={vt} style={`view-transition-name: ${vt}`}>
+                          <ShirtFace
+                            shirt={entry.data}
+                            uid={`sez-${entry.id}`}
+                            sizes={stop.shirts.length === 1 ? sizesOne : sizesTwo}
+                          />
+                        </span>
+                        <span class="caption">
+                          <span class="name">
+                            {lastName(entry.data.player)}
+                            <span class="num">
+                              <span class="visually-hidden">{strings.number} </span>
+                              {entry.data.number}
+                            </span>
+                          </span>
+                          <span class="fact">{fact(entry)}</span>
+                          <span class="visually-hidden">{entry.data.player} – {strings.open}</span>
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+
+    <p class="hint" aria-hidden="true">{strings.hint}</p>
+  </div>
+</section>
+
+<style>
+  .seasons {
+    --stop-w: min(84vw, 26rem);
+    --gap: 1rem;
+    position: relative;
+    background: var(--c-white);
+    color: var(--c-ink);
+  }
+
+  .pin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding-block: 2rem 3rem;
+  }
+
+  .bar {
+    display: grid;
+    gap: 0.9rem;
+    padding-inline: var(--gutter);
+  }
+
+  .kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-red);
+  }
+
+  .index ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .index a {
+    display: inline-block;
+    padding: 0.45rem 0.7rem 0.4rem;
+    border: 1.5px solid var(--c-red);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--c-red);
+    text-decoration: none;
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast);
+
+    &:hover,
+    &:focus-visible,
+    &[aria-current='step'] {
+      background: var(--c-red);
+      color: var(--c-white);
+    }
+  }
+
+  .progress {
+    display: none;
+  }
+
+  /* ── Base: native horizontal scroll-snap strip ── */
+  .strip {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .track {
+    display: flex;
+    gap: var(--gap);
+    inline-size: max-content;
+    margin: 0;
+    padding: 0 var(--gutter);
+    list-style: none;
+  }
+
+  .stop {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 0.25rem;
+    inline-size: var(--stop-w);
+    padding: 1rem 0 0;
+    border-block-start: 3px solid var(--c-red);
+    scroll-snap-align: start;
+  }
+
+  .no {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    color: var(--c-navy);
+  }
+
+  .year {
+    position: relative;
+    z-index: -1;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    column-gap: 0.06em;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(5.5rem, 27vw, 8.5rem);
+    font-weight: 900;
+    font-stretch: 100%;
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+    color: var(--c-red);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .prefix {
+    flex-basis: 100%;
+    margin-block-end: 0.15em;
+    font-family: var(--font-mono);
+    font-size: max(var(--fs-sm), 0.14em);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .small {
+    font-size: 0.42em;
+    font-stretch: 75%;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--c-red);
+  }
+
+  .shirts {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: end;
+    margin: -1.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .shirt-link {
+    display: grid;
+    gap: 0.6rem;
+    color: inherit;
+    text-decoration: none;
+
+    /* Single red ring: 5.4:1 on the white section, no ink halo needed. */
+    &:focus-visible {
+      outline-color: var(--c-red);
+      box-shadow: none;
+    }
+  }
+
+  .visual {
+    display: block;
+    aspect-ratio: 5 / 6;
+    inline-size: 100%;
+    filter: drop-shadow(0 1.2rem 1.2rem rgb(5 15 26 / 0.22));
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .shirts[data-count='1'] .visual {
+    inline-size: 78%;
+    justify-self: center;
+  }
+
+  .caption {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .name {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 900;
+    font-stretch: 75%;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  .num {
+    color: var(--c-red);
+  }
+
+  .fact {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    color: var(--c-navy);
+  }
+
+  .hint {
+    margin: 0;
+    padding-inline: var(--gutter);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-navy);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .shirt-link:hover .visual {
+      transform: translateY(-3%) rotate(-2deg) scale(1.03);
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .seasons {
+      --stop-w: min(60vw, 30rem);
+      --gap: 2rem;
+    }
+  }
+
+  @keyframes stretch {
+    0%,
+    100% {
+      font-stretch: 62%;
+    }
+    50% {
+      font-stretch: 125%;
+    }
+  }
+
+  @keyframes settle {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(0.9);
+    }
+    50% {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes travel {
+    to {
+      translate: calc((var(--stops) - 1) * var(--stop-w) * -1) 0;
+    }
+  }
+
+  @keyframes drift {
+    from {
+      translate: 9vw 0;
+      rotate: 5deg;
+    }
+    to {
+      translate: -9vw 0;
+      rotate: -5deg;
+    }
+  }
+
+  @keyframes grow {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* Strip: each year stretches wide as it crosses the middle of the strip. */
+    @supports (animation-timeline: view()) {
+      .year {
+        animation: stretch linear both;
+        animation-timeline: view(inline);
+        animation-range: cover 0% cover 100%;
+      }
+
+      .shirts {
+        animation: settle linear both;
+        animation-timeline: view(inline);
+        animation-range: cover 0% cover 100%;
+      }
+    }
+  }
+
+  /* ── Desktop: pinned, scroll-driven horizontal travel ── */
+  @media (min-width: 64rem) and (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .seasons {
+        --pinned: 1;
+        --stop-w: 62vw;
+        --gap: 0px;
+        block-size: calc(100svh + (var(--stops) - 1) * var(--stop-w));
+        view-timeline: --seasons block;
+      }
+
+      .pin {
+        position: sticky;
+        inset-block-start: 0;
+        block-size: 100svh;
+        grid-template-rows: auto 1fr auto;
+        gap: 0;
+        padding-block: 5.5rem 1.5rem;
+        overflow: clip;
+      }
+
+      .bar {
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        column-gap: 2rem;
+      }
+
+      .progress {
+        display: block;
+        grid-column: 1 / -1;
+        block-size: 3px;
+        background: rgb(198 16 46 / 0.15);
+
+        & span {
+          display: block;
+          block-size: 100%;
+          background: var(--c-red);
+          transform-origin: left;
+          animation: grow linear both;
+          animation-timeline: --seasons;
+          animation-range: contain 0% contain 100%;
+        }
+      }
+
+      .strip {
+        /* Query container for the track's centring: 100cqi = the strip's real width,
+           without the scrollbar gutter that 100vw would include. */
+        container-type: inline-size;
+        overflow: clip;
+        scroll-snap-type: none;
+        display: grid;
+        align-items: center;
+      }
+
+      .track {
+        padding-inline: calc((100cqi - var(--stop-w)) / 2);
+        animation: travel linear both;
+        animation-timeline: --seasons;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .stop {
+        grid-template-rows: auto 1fr;
+        grid-template-columns: 1fr;
+        align-items: center;
+        min-block-size: 62svh;
+        padding: 1.25rem 3vw 0;
+        border-block-start: 0;
+        border-inline-start: 3px solid var(--c-red);
+      }
+
+      .no {
+        grid-row: 1;
+      }
+
+      /* Year sits behind the shirts, centred in the stop. */
+      .year {
+        grid-row: 2;
+        grid-column: 1;
+        justify-content: center;
+        align-self: center;
+        flex-wrap: nowrap;
+        font-size: min(14.5vw, 34svh);
+        text-align: center;
+        animation: stretch linear both;
+        animation-timeline: --seasons;
+        animation-range:
+          contain calc((var(--i) - 1) / (var(--stops) - 1) * 100%)
+          contain calc((var(--i) + 1) / (var(--stops) - 1) * 100%);
+      }
+
+      .prefix {
+        position: absolute;
+        inset-block-end: 100%;
+        inset-inline: 0;
+        text-align: center;
+      }
+
+      .shirts {
+        grid-row: 2;
+        grid-column: 1;
+        justify-self: center;
+        inline-size: min(100%, var(--shirts-w, 44svh));
+        margin: 0;
+        animation: drift linear both;
+        animation-timeline: --seasons;
+        animation-range:
+          contain calc((var(--i) - 1) / (var(--stops) - 1) * 100%)
+          contain calc((var(--i) + 1) / (var(--stops) - 1) * 100%);
+      }
+
+      .shirts[data-count='1'] {
+        --shirts-w: 44svh;
+      }
+
+      .shirts:not([data-count='1']) {
+        --shirts-w: 66svh;
+      }
+
+      .shirts[data-count='1'] .visual {
+        inline-size: 82%;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+  }
+</style>

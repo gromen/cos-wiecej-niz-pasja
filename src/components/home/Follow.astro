@@ -1,0 +1,242 @@
+---
+/**
+ * „Śledź kolekcję” – giant typographic links to the socials.
+ * The rotated white sash moves only with scroll (scroll-driven, never on its own),
+ * so it needs no pause control; static without motion support.
+ */
+export interface FollowLink {
+  label: string;
+  handle: string;
+  href: string;
+}
+
+export interface FollowStrings {
+  kicker: string;
+  title: string;
+  newTab: string;
+  sash: string;
+}
+
+interface Props {
+  links: FollowLink[];
+  strings: FollowStrings;
+}
+
+const { links, strings } = Astro.props;
+const repeats = Array.from({ length: 6 }, (_, i) => i);
+---
+
+<section class="follow" aria-labelledby="follow-title">
+  <div class="head">
+    <p class="kicker">{strings.kicker}</p>
+    <h2 id="follow-title" class="visually-hidden">{strings.title}</h2>
+  </div>
+
+  <ul class="links" role="list">
+    {
+      links.map((link) => (
+        <li>
+          <a class="link" href={link.href} target="_blank" rel="noopener">
+            <span class="label">{link.label}</span>
+            <span class="handle">{link.handle}</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M5 19 19 5M8 5h11v11" fill="none" stroke="currentColor" stroke-width="2.4" />
+            </svg>
+            <span class="visually-hidden">{strings.newTab}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="sash" aria-hidden="true">
+    <div class="sash__track">
+      {repeats.map(() => <span>{strings.sash}</span>)}
+    </div>
+  </div>
+</section>
+
+<style>
+  .follow {
+    position: relative;
+    overflow: clip;
+    display: grid;
+    gap: 2rem;
+    padding: 14svh var(--gutter) 4.5rem;
+    background: var(--c-red);
+    color: var(--c-white);
+  }
+
+  .kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .links {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-block-start: 2px solid var(--c-white);
+  }
+
+  .link {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    column-gap: 1rem;
+    padding: 1.1rem 0 1rem;
+    border-block-end: 2px solid var(--c-white);
+    color: var(--c-white);
+    text-decoration: none;
+    transition: color var(--dur) var(--ease-out);
+
+    /* White sash sweeping across the row; the text flips to red over it. */
+    &::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset: 0 calc(var(--gutter) * -1);
+      background: var(--c-white);
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform var(--dur) var(--ease-out);
+    }
+
+    & svg {
+      grid-row: 1 / span 2;
+      grid-column: 2;
+      align-self: center;
+      inline-size: clamp(2rem, 1rem + 5vw, 5.5rem);
+      transition: transform var(--dur) var(--ease-out);
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: var(--c-red);
+
+      &::before {
+        transform: none;
+      }
+
+      & svg {
+        transform: translate(0.3rem, -0.3rem);
+      }
+    }
+
+    /* Inset red ring on the white sash (5.4:1) – no ink halo around the full-bleed row. */
+    &:focus-visible {
+      outline-offset: -4px;
+      outline-color: var(--c-red);
+      box-shadow: none;
+    }
+  }
+
+  /*
+   * Fixed-width box: the stretch on hover happens inside it, so nothing reflows (no CLS).
+   * How far it may stretch depends on the width: the type grows faster (12.5vw) than the box
+   * (100vw − gutters − arrow), and the widest label „INSTAGRAM” only fits at 100% from ~98rem.
+   * Measured: its width ≈ font-size × (4.39 + 0.058 × (stretch − 62)); each step below is the
+   * largest stretch that still fits at the step's lower bound (−1–2% margin). < 30rem: none.
+   */
+  .follow {
+    --hover-stretch: 62%;
+
+    @media (min-width: 30rem) {
+      --hover-stretch: 76%;
+    }
+
+    @media (min-width: 48rem) {
+      --hover-stretch: 87%;
+    }
+
+    @media (min-width: 64rem) {
+      --hover-stretch: 92%;
+    }
+
+    @media (min-width: 80rem) {
+      --hover-stretch: 96%;
+    }
+
+    @media (min-width: 100rem) {
+      --hover-stretch: 100%;
+    }
+  }
+
+  .label {
+    display: block;
+    overflow: clip;
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 0.8rem + 12.5vw, 13rem);
+    font-weight: 900;
+    font-stretch: 62%;
+    line-height: 0.82;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: font-stretch var(--dur-slow) var(--ease-out);
+  }
+
+  .handle {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    letter-spacing: 0.06em;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .link:hover .label {
+      font-stretch: var(--hover-stretch);
+    }
+  }
+
+  .sash {
+    inline-size: 120%;
+    margin: 2.5rem -10% 0;
+    overflow: hidden;
+    padding-block: 0.8rem;
+    background: var(--c-white);
+    color: var(--c-red);
+    transform: rotate(-3deg);
+  }
+
+  .sash__track {
+    display: flex;
+    inline-size: max-content;
+
+    & span {
+      flex: none;
+      padding-inline: 1.5rem;
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 1rem + 2.5vw, 3rem);
+      font-weight: 900;
+      font-stretch: 75%;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  }
+
+  @keyframes sash-scroll {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: -35% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .sash__track {
+        animation: sash-scroll linear both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+      }
+    }
+  }
+</style>

@@ -1,0 +1,169 @@
+---
+/**
+ * „Historia” – the story as a pull-quote.
+ * Line-by-line reveal without JS: every word has its own `view()` timeline, and
+ * words sharing a line share a position, so whole lines light up together –
+ * whatever the wrapping. Browsers without scroll-driven animations show static text.
+ */
+import { socials } from '../../data/collection';
+import { t } from './copy';
+
+interface Props {
+  story?: string;
+}
+
+const { story } = Astro.props;
+const words = story?.split(/\s+/).filter(Boolean) ?? [];
+---
+
+<section class="story" aria-labelledby="story-title">
+  <h2 id="story-title" class="kicker">{t.storyTitle}</h2>
+  {
+    words.length > 0 ? (
+      <figure>
+        <blockquote class="quote">
+          <svg class="mark" viewBox="0 0 48 32" aria-hidden="true" focusable="false">
+            <path d="M4 32 L12 4 Q14 0 18 0 L22 0 L14 32 Z M26 32 L34 4 Q36 0 40 0 L44 0 L36 32 Z" />
+          </svg>
+          <p>
+            {words.map((word) => (
+              <Fragment>
+                <span class="w">{word}</span>{' '}
+              </Fragment>
+            ))}
+          </p>
+        </blockquote>
+        <figcaption>— {t.storyBy}</figcaption>
+      </figure>
+    ) : (
+      <div class="pending">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6" />
+        </svg>
+        <p class="pending-title">{t.pendingTitle}</p>
+        <p>{t.pendingText}</p>
+        <a href={socials.instagram} target="_blank" rel="noopener">
+          {t.pendingLink}
+          <span aria-hidden="true">↗</span>
+          <span class="visually-hidden">{t.newTab}</span>
+        </a>
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .story {
+    min-inline-size: 0;
+  }
+
+  .kicker {
+    margin: 0 0 1.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  figure {
+    margin: 0;
+  }
+
+  .quote {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 1rem + 2.8vw, 3.4rem);
+    font-weight: 600;
+    font-stretch: 85%;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+
+    & p {
+      max-inline-size: 22em;
+      margin: 0;
+      text-wrap: pretty;
+    }
+  }
+
+  .mark {
+    display: block;
+    inline-size: 1.4em;
+    margin-block-end: 0.35em;
+    fill: var(--c-red);
+  }
+
+  figcaption {
+    margin-block-start: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+  }
+
+  .pending {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    border: 1px dashed rgb(210 179 101 / 0.55);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgb(198 16 46 / 0.16), transparent 60%);
+
+    & svg {
+      inline-size: 2rem;
+      fill: var(--c-white);
+    }
+
+    & p {
+      margin: 0;
+      max-inline-size: 46ch;
+      color: var(--fg-muted);
+    }
+
+    & a {
+      display: inline-flex;
+      gap: 0.5em;
+      margin-block-start: 0.5rem;
+      padding-block: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: var(--fs-sm);
+      color: var(--c-gold);
+      text-decoration: none;
+      border-block-end: 1px solid currentColor;
+    }
+  }
+
+  .pending .pending-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    font-stretch: 80%;
+    line-height: 1.1;
+    color: var(--fg);
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .w {
+        display: inline-block;
+        animation: dt-line linear both;
+      }
+
+      /* Separate rule on purpose: the CSS minifier would otherwise fold the timeline
+         into the animation shorthand, which browsers reject as invalid. */
+      .quote .w {
+        animation-timeline: view();
+        animation-range: entry 10% cover 30%;
+      }
+    }
+  }
+
+  @keyframes dt-line {
+    from {
+      opacity: 0.12;
+      transform: translateY(0.4em);
+    }
+  }
+</style>

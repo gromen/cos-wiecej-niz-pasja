@@ -1,0 +1,194 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/site/SiteHeader.astro';
+import CollectionMasthead from '../../components/collection/CollectionMasthead.astro';
+import CollectionFilters from '../../components/collection/CollectionFilters.astro';
+import CollectionResults from '../../components/collection/CollectionResults.astro';
+import CollectionFooter from '../../components/collection/CollectionFooter.astro';
+import ShirtCard from '../../components/collection/ShirtCard.astro';
+import ShirtSymbols from '../../components/shirt/ShirtSymbols.astro';
+import { buildFacets } from '../../components/collection/model';
+import type { CollectionStrings } from '../../components/collection/strings';
+import { getShirts } from '../../lib/shirts';
+
+/* ——— All copy for this page (EN version = another object of the same type) ——— */
+const t: CollectionStrings = {
+  lang: 'pl',
+  meta: {
+    title: 'Kolekcja – meczowe koszulki Wisły Kraków | Coś więcej niż pasja',
+    description:
+      'Wszystkie koszulki z kolekcji „Coś więcej niż pasja”: meczowe koszulki Wisły Kraków. Szukaj po zawodniku, epoce, kolorze i statusie.',
+  },
+  skip: 'Przejdź do koszulek',
+  masthead: {
+    eyebrow: 'Wisła Kraków · meczowe koszulki',
+    heading: 'Kolekcja',
+    lead: 'Grane, przygotowane na mecz, podpisane – każda z historią z szatni albo z trybun.',
+    tally: 'Opisane: {described} · czeka na opis: {drafts}',
+    sash: '★ mecz po meczu ★ koszulka po koszulce ★ Biała Gwiazda ',
+  },
+  filters: {
+    region: 'Filtrowanie kolekcji',
+    search: 'Szukaj zawodnika',
+    searchPlaceholder: 'Zawodnik lub numer…',
+    open: 'Filtry',
+    sheetTitle: 'Filtry',
+    close: 'Zamknij filtry',
+    reset: 'Wyczyść',
+    groups: { era: 'Epoka', kind: 'Rodzaj', color: 'Kolor', status: 'Status', options: 'Opcje' },
+    unknownEra: 'Nieznany sezon',
+    signed: 'Z autografem',
+    described: 'Tylko opisane',
+    sort: 'Sortuj',
+    sortOptions: { newest: 'Najnowsze w kolekcji', number: 'Numer na plecach', season: 'Sezon' },
+    activeCount: 'aktywne filtry',
+  },
+  card: {
+    draft: 'do uzupełnienia',
+    signed: 'autograf',
+    number: 'numer',
+    unknownSeason: 'sezon ?',
+    unknownPlayer: 'N.N.',
+    unknownPlayerFull: 'Nieznany zawodnik',
+    photo: 'Prawdziwe zdjęcie',
+    illustration: 'Ilustracja',
+    flip: 'Obróć koszulkę',
+  },
+  results: {
+    heading: 'Koszulki w kolekcji',
+    emptyTitle: 'Pusto na trybunie',
+    emptyText: 'Żadna koszulka nie pasuje do wybranych filtrów.',
+    emptyReset: 'Wyczyść filtry',
+  },
+  footer: {
+    disclaimer: 'Nieoficjalna strona kolekcjonerska – nie jest powiązana z TS Wisła Kraków SA.',
+    instagram: 'Instagram',
+    newTab: '(otwiera się w nowej karcie)',
+  },
+  client: {
+    forms: ['koszulka', 'koszulki', 'koszulek'],
+    applyForms: ['koszulkę', 'koszulki', 'koszulek'],
+    of: 'z',
+    apply: 'Pokaż {n} {forms}',
+    applyEmpty: 'Brak wyników',
+    status: 'Wyniki: {n} {forms} z {total}.',
+    statusAll: 'Wszystkie koszulki: {total}.',
+    statusEmpty: 'Brak koszulek dla wybranych filtrów.',
+  },
+};
+
+const shirts = await getShirts();
+const total = shirts.length;
+const described = shirts.filter(({ data }) => !data.draft).length;
+// Facet options come from described shirts only – placeholders (draft) have unknown
+// season/kind/status and would flood those chips; see buildFacets().
+const facets = buildFacets(shirts, t.lang, t.filters.groups, t.filters.unknownEra);
+const signedCount = shirts.filter(({ data }) => data.signed).length;
+---
+
+<BaseLayout title={t.meta.title} description={t.meta.description} lang={t.lang} themeColor="#c6102e">
+  <script is:inline slot="head">
+    // Runs before first paint: flag JS (shows the filter bar without a shift), hide the grid
+    // while a filtered view is restored from the URL, and on a cross-document transition
+    // back from a detail page let only that page's shirt keep its shared name.
+    (() => {
+      const html = document.documentElement;
+      html.dataset.js = '';
+      const params = new URLSearchParams(location.search);
+      const keys = ['q', 'era', 'kind', 'color', 'status', 'signed', 'described', 'sort'];
+      if (keys.some((key) => params.has(key))) html.dataset.restore = '';
+      addEventListener('pagereveal', (event) => {
+        const from = window.navigation?.activation?.from?.url;
+        if (!event.viewTransition || !from) return;
+        const path = new URL(from).pathname;
+        const visuals = [...document.querySelectorAll('[data-vt]')];
+        visuals.forEach((el) => {
+          if (el.closest('a')?.pathname !== path) el.style.viewTransitionName = 'none';
+        });
+        const done = () => {
+          visuals.forEach((el) => {
+            el.style.viewTransitionName = el.dataset.vt;
+          });
+        };
+        event.viewTransition.finished.then(done, done);
+      });
+    })();
+  </script>
+
+  <a class="skip" href="#kolekcja-lista">{t.skip}</a>
+
+  <!-- Shared placeholder-shirt sprite: every card <use>s it instead of inlining a full SVG. -->
+  <ShirtSymbols />
+
+  <div class="top">
+    <SiteHeader tone="red" current="kolekcja" />
+  </div>
+
+  <main id="main" class="collection" data-collection data-strings={JSON.stringify(t.client)}>
+    <CollectionMasthead strings={t.masthead} forms={t.client.forms} total={total} described={described} />
+
+    <div class="browse">
+      <CollectionFilters
+        strings={t.filters}
+        facets={facets}
+        total={total}
+        signedCount={signedCount}
+        describedCount={described}
+      />
+      <CollectionResults strings={t.results}>
+        {
+          shirts.map((shirt, i) => (
+            <ShirtCard shirt={shirt} order={i} strings={t.card} lang={t.lang} eager={i < 5} priority={i < 2} />
+          ))
+        }
+      </CollectionResults>
+    </div>
+  </main>
+
+  <CollectionFooter strings={t.footer} />
+</BaseLayout>
+
+<script>
+  import '../../components/collection/collection';
+</script>
+
+<style>
+  /* Same grain as the masthead below, so the two red bands read as one. */
+  .top {
+    position: relative;
+    background: var(--c-red);
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.09;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+  }
+
+  .skip {
+    position: absolute;
+    z-index: 100;
+    inset-block-start: 0.5rem;
+    inset-inline-start: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--c-white);
+    color: var(--c-ink);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    translate: 0 -200%;
+
+    &:focus-visible {
+      translate: 0 0;
+    }
+  }
+
+  .collection {
+    display: block;
+  }
+</style>

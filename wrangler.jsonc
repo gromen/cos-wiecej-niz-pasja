@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Static Astro build served by Workers Static Assets – test URL: https://cos-wiecej-niz-pasja.<account>.workers.dev
+  // (Cloudflare Worker names allow only lowercase letters, digits and dashes – hence dashes, not underscores.)
+  "name": "cos-wiecej-niz-pasja",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": true,
+  "preview_urls": true
+}

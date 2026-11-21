@@ -1,0 +1,639 @@
+---
+/**
+ * One collection card. Everything the client filter needs lives in data-* attributes,
+ * so the dataset is never duplicated as JSON.
+ *
+ * `.card__visual` is the shared element morphing into the detail page
+ * (view-transition-name from shirtTransitionName). It is a 5:6 box: a real cut-out
+ * (`data.images.front/back`) renders as <Picture> filling it; until then a <ShirtUse>
+ * drawn from the page sprite (<ShirtSymbols> on the collection page).
+ */
+import { Picture } from 'astro:assets';
+import ShirtUse from '../shirt/ShirtUse.astro';
+import {
+  colorLabel,
+  kindLabel,
+  lastName,
+  shirtHref,
+  shirtPalette,
+  shirtTransitionName,
+  statusLabel,
+  type ShirtEntry,
+} from '../../lib/shirts';
+import { fold } from './search';
+import { eraOf } from './model';
+import type { CollectionStrings } from './strings';
+
+interface Props {
+  shirt: ShirtEntry;
+  /** Position in the default order („najnowsze w kolekcji”). */
+  order: number;
+  strings: CollectionStrings['card'];
+  lang: CollectionStrings['lang'];
+  /** First visible row: eager front image (no lazy-load delay). */
+  eager?: boolean;
+  /** The very first cards (likely LCP): `fetchpriority="high"` on top of eager. */
+  priority?: boolean;
+}
+
+const { shirt, order, strings, lang, eager = false, priority = false } = Astro.props;
+const { id, data } = shirt;
+const palette = shirtPalette[data.color];
+const vtName = shirtTransitionName(id);
+
+const unknownPlayer = /^do uzupełnienia$/i.test(data.player.trim());
+const surname = unknownPlayer ? strings.unknownPlayer : lastName(data.player);
+const firstNames = unknownPlayer ? '' : data.player.slice(0, data.player.length - surname.length).trim();
+const fullName = unknownPlayer ? strings.unknownPlayerFull : data.player;
+
+const meta = data.draft
+  ? [colorLabel[data.color][lang], data.season ?? strings.unknownSeason]
+  : [data.season ?? strings.unknownSeason, data.competition ?? kindLabel[data.kind][lang]];
+
+const front = data.images?.front;
+const back = data.images?.back;
+const hasBack = !data.draft;
+const isPhoto = Boolean(front);
+/** Touch screens have no hover: a small button flips photo cards to the back. */
+const canFlip = Boolean(front && back);
+// The visual is 86% of the card (inset 7%); grid: 2 → 3 → 4 → 5 columns.
+const sizes = '(min-width: 96rem) 16vw, (min-width: 64rem) 20vw, (min-width: 40rem) 27vw, 40vw';
+const widths = [200, 320, 480, 640];
+const loading = eager || priority ? 'eager' : 'lazy';
+---
+
+<li
+  class="card"
+  data-card
+  data-era={eraOf(data.seasonStart)}
+  data-kind={data.kind}
+  data-color={data.color}
+  data-status={data.status}
+  data-signed={data.signed ? '1' : '0'}
+  data-draft={data.draft ? '1' : '0'}
+  data-number={data.number}
+  data-season={data.seasonStart ?? ''}
+  data-order={order}
+  data-search={unknownPlayer ? '' : fold(data.player)}
+  data-photo={isPhoto ? '1' : '0'}
+>
+  <a class="card__link" href={shirtHref(id, lang)}>
+    <div class="card__stage">
+      <span class="card__no" aria-hidden="true">{data.number}</span>
+      <div class="card__visual" data-vt={vtName} style={`view-transition-name: ${vtName}`}>
+        <div class="card__face card__face--front">
+          {
+            front ? (
+              <Picture
+                src={front}
+                alt=""
+                widths={widths}
+                sizes={sizes}
+                formats={['avif']}
+                fallbackFormat="webp"
+                loading={loading}
+                fetchpriority={priority ? 'high' : 'auto'}
+                decoding="async"
+              />
+            ) : (
+              <ShirtUse color={palette.body} trim={palette.trim} />
+            )
+          }
+        </div>
+        {
+          hasBack && (
+            <div class="card__face card__face--back" data-back-pending={back ? '' : undefined}>
+              {back ? (
+                /* Inert until the first hover / focus / flip tap (collection.ts clones it),
+                   so the grid never downloads 87 backs nobody looks at. */
+                <template data-back>
+                  <Picture
+                    src={back}
+                    alt=""
+                    widths={widths}
+                    sizes={sizes}
+                    formats={['avif']}
+                    fallbackFormat="webp"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </template>
+              ) : (
+                <ShirtUse
+                  side="back"
+                  color={palette.body}
+                  trim={palette.trim}
+                  name={surname}
+                  number={data.number}
+                  signed={data.signed}
+                />
+              )}
+            </div>
+          )
+        }
+      </div>
+      {
+        data.signed && (
+          <svg class="card__star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6" />
+          </svg>
+        )
+      }
+      <span class={`card__src card__src--${isPhoto ? 'photo' : 'art'}`} aria-hidden="true">
+        {isPhoto ? strings.photo : strings.illustration}
+      </span>
+    </div>
+
+    <div class="card__body">
+      <h3 class="card__name">
+        <span class="visually-hidden">
+          {fullName}, {strings.number} {data.number}, {(isPhoto ? strings.photo : strings.illustration).toLowerCase()}
+        </span>
+        <span aria-hidden="true">
+          {firstNames && <span class="card__first">{firstNames}</span>}
+          <span class="card__last">{surname}</span>
+        </span>
+      </h3>
+      <p class="card__meta">{meta.join(' · ')}</p>
+      <ul class="card__badges">
+        {data.signed && <li class="badge badge--signed">★ {strings.signed}</li>}
+        {
+          data.draft ? (
+            <li class="badge badge--draft">{strings.draft}</li>
+          ) : (
+            <li class={`badge badge--${data.status}`}>{statusLabel[data.status][lang]}</li>
+          )
+        }
+      </ul>
+    </div>
+  </a>
+  {
+    canFlip && (
+      <button type="button" class="card__flip" data-card-flip aria-pressed="false" hidden>
+        <span class="visually-hidden">
+          {strings.flip}: {fullName}
+        </span>
+        <span class="card__flip-icon" aria-hidden="true">
+          ↻
+        </span>
+      </button>
+    )
+  }
+</li>
+
+<style>
+  .card {
+    position: relative;
+    /* Grid sets --cols / --gap / --body-h; 100cqi = grid width → exact placeholder height. */
+    container-type: inline-size;
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto
+      calc((100cqi - (var(--cols, 2) - 1) * var(--gap, 0.75rem)) / var(--cols, 2) * 1.2 + var(--body-h, 7.5rem));
+    view-transition-class: collection-card;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  .card__link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+    block-size: 100%;
+    text-decoration: none;
+    color: var(--fg);
+    border-radius: var(--radius);
+    -webkit-tap-highlight-color: transparent;
+
+    /* content-visibility implies paint containment → keep the ring inside the box. */
+    &:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: -2px;
+    }
+  }
+
+  .card__stage {
+    position: relative;
+    isolation: isolate;
+    aspect-ratio: 5 / 6;
+    overflow: clip;
+    border-radius: var(--radius);
+    background:
+      linear-gradient(118deg, transparent 0 44%, rgb(250 250 250 / 0.055) 44% 57%, transparent 57%),
+      radial-gradient(75% 60% at 50% 40%, #133a5e 0%, #0a2742 55%, #061a2c 100%);
+    box-shadow: inset 0 0 0 1px rgb(185 200 213 / 0.1);
+
+    /* Soft floor shadow (cheaper than a filter on 87 SVGs). */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: auto 18% 4% 18%;
+      block-size: 9%;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, rgb(0 0 0 / 0.55), transparent);
+      transition:
+        scale var(--dur) var(--ease-out),
+        opacity var(--dur) var(--ease-out);
+    }
+
+    /* Red sash sweeping across the panel on hover. */
+    &::after {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset-block: -20%;
+      inset-inline-start: 38%;
+      inline-size: 16%;
+      background: var(--c-red);
+      opacity: 0;
+      transform: skewX(-24deg) translateX(-180%);
+      transition:
+        transform var(--dur) var(--ease-out),
+        opacity var(--dur-fast);
+    }
+  }
+
+  /* Big back-number in display type, outlined, sitting behind the shirt. */
+  .card__no {
+    position: absolute;
+    z-index: -1;
+    inset-block-start: -0.06em;
+    inset-inline-start: 0.04em;
+    font-family: var(--font-display);
+    font-size: 46cqi;
+    font-weight: 900;
+    font-stretch: 125%;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: transparent;
+    -webkit-text-stroke: 1px rgb(250 250 250 / 0.26);
+    transition:
+      color var(--dur) var(--ease-out),
+      -webkit-text-stroke-color var(--dur) var(--ease-out),
+      translate var(--dur) var(--ease-out);
+  }
+
+  /* 5:6 box (inset is proportional on both axes) – <Picture>/<svg> fill it. */
+  .card__visual {
+    position: absolute;
+    inset: 7%;
+    perspective: 900px;
+    /* `exhibit` too: the detail page's shared-element timing targets that class. */
+    view-transition-class: collection-shirt exhibit;
+    transition: transform calc(var(--dur) * 1.4) var(--ease-out);
+  }
+
+  .card__face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    transition: transform calc(var(--dur) * 1.5) var(--ease-out) 60ms;
+
+    :global(img),
+    :global(picture),
+    :global(svg) {
+      inline-size: 100%;
+      block-size: 100%;
+      object-fit: contain;
+    }
+  }
+
+  .card__face--back {
+    transform: rotateY(180deg);
+  }
+
+  .card__star {
+    position: absolute;
+    inset-block-start: 0.6rem;
+    inset-inline-end: 0.6rem;
+    inline-size: clamp(0.9rem, 9cqi, 1.4rem);
+    fill: var(--c-gold);
+  }
+
+  /* Source badge: real photo vs. illustration – mono, bottom-left of the stage. */
+  .card__src {
+    position: absolute;
+    inset-block-end: 0.45rem;
+    inset-inline-start: 0.45rem;
+    padding: 0.18rem 0.4rem 0.12rem;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .card__src--photo {
+    background: rgb(250 250 250 / 0.92);
+    color: var(--c-ink);
+  }
+
+  .card__src--art {
+    border: 1px dashed rgb(185 200 213 / 0.4);
+    color: var(--fg-muted);
+  }
+
+  /* Touch flip affordance – sits on the stage's bottom-right corner (stage = 120cqi tall). */
+  .card__flip {
+    position: absolute;
+    z-index: 1;
+    inset-block-start: calc(120cqi - 2.75rem);
+    inset-inline-end: 0;
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--c-red);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+
+    &[hidden] {
+      display: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: -4px;
+      border-radius: 50%;
+    }
+  }
+
+  .card__flip-icon {
+    display: grid;
+    place-items: center;
+    inline-size: 1.9rem;
+    block-size: 1.9rem;
+    border-radius: 50%;
+    background: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 0.35);
+    transition: rotate var(--dur) var(--ease-out);
+  }
+
+  .card__flip[aria-pressed='true'] .card__flip-icon {
+    rotate: 180deg;
+  }
+
+  /* Fine pointers flip on hover/focus – the button is only for touch. */
+  @media (hover: hover) and (pointer: fine) {
+    .card__flip {
+      display: none;
+    }
+  }
+
+  /* Tapped flip (touch). Leaving for the detail page snaps back to the front. */
+  :global(:root:not([data-leaving])) .card[data-flipped] {
+    .card__face--front:has(+ .card__face--back:not([data-back-pending])) {
+      transform: rotateY(-180deg);
+    }
+
+    .card__face--back:not([data-back-pending]) {
+      transform: rotateY(0deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card__visual,
+    .card__face,
+    .card__no,
+    .card__stage::before,
+    .card__stage::after,
+    .card__last::before,
+    .card__flip-icon {
+      transition-duration: 0.01ms;
+      transition-delay: 0s;
+    }
+  }
+
+  .card__body {
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    padding-inline: 0.1rem;
+  }
+
+  .card__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  .card__first {
+    display: block;
+    margin-block-end: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+  }
+
+  .card__last {
+    position: relative;
+    isolation: isolate;
+    display: inline-block;
+    max-inline-size: 100%;
+    font-size: clamp(1.05rem, 11.5cqi, 2.1rem);
+    font-stretch: 75%;
+    overflow-wrap: anywhere;
+
+    /* The red sash that wipes under the name on hover. */
+    &::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset: 18% -0.25em 2% -0.2em;
+      background: var(--c-red);
+      transform: skewX(-14deg) scaleX(0);
+      transform-origin: left;
+      transition: transform var(--dur) var(--ease-out);
+    }
+  }
+
+  .card__meta {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+  }
+
+  .card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0.15rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .badge {
+    padding: 0.2rem 0.45rem 0.15rem;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .badge--signed {
+    border-color: transparent;
+    background: var(--c-white);
+    color: var(--c-red);
+    font-weight: 700;
+  }
+
+  .badge--match-worn {
+    border-color: transparent;
+    background: var(--c-red);
+    color: var(--c-white);
+  }
+
+  .badge--match-issued {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  .badge--unconfirmed,
+  .badge--draft {
+    border-style: dashed;
+    color: var(--fg-muted);
+  }
+
+  /* Placeholders: muted, dashed, still a link. */
+  .card[data-draft='1'] {
+    .card__stage {
+      background:
+        repeating-linear-gradient(118deg, transparent 0 14px, rgb(185 200 213 / 0.035) 14px 15px),
+        radial-gradient(75% 60% at 50% 40%, #0d2a44 0%, #071a2b 70%);
+      box-shadow: none;
+      outline: 1px dashed rgb(185 200 213 / 0.32);
+      outline-offset: -1px;
+    }
+
+    .card__face {
+      opacity: 0.58;
+    }
+
+    .card__stage::before {
+      opacity: 0.4;
+    }
+
+    .card__no {
+      -webkit-text-stroke-color: rgb(250 250 250 / 0.14);
+    }
+
+    .card__last {
+      color: rgb(250 250 250 / 0.78);
+    }
+  }
+
+  /* Hover / keyboard focus – lift, tilt, flip to the back, sash under the name. */
+  @media (hover: hover) and (pointer: fine) {
+    :global(:root:not([data-leaving])) .card__link:hover {
+      @media (prefers-reduced-motion: no-preference) {
+        .card__visual {
+          transform: translateY(-4%) rotate(-2deg) scale(1.03);
+        }
+      }
+
+      .card__stage::before {
+        scale: 0.82;
+        opacity: 0.7;
+      }
+
+      .card__stage::after {
+        opacity: 1;
+        transform: skewX(-24deg) translateX(0);
+      }
+
+      .card__no {
+        -webkit-text-stroke-color: rgb(250 250 250 / 0.6);
+        translate: 0.04em 0;
+      }
+
+      .card__last::before {
+        transform: skewX(-14deg) scaleX(1);
+      }
+
+      .card__face--front:has(+ .card__face--back:not([data-back-pending])) {
+        transform: rotateY(-180deg);
+      }
+
+      .card__face--back:not([data-back-pending]) {
+        transform: rotateY(0deg);
+      }
+
+      .card__face--back :global(.sig) {
+        opacity: 1;
+        stroke-dashoffset: 0;
+        transition:
+          stroke-dashoffset 1.2s var(--ease-in-out) 0.5s,
+          opacity 0s 0.5s;
+      }
+    }
+  }
+
+  :global(:root:not([data-leaving])) .card__link:focus-visible {
+    @media (prefers-reduced-motion: no-preference) {
+      .card__visual {
+        transform: translateY(-4%) rotate(-2deg) scale(1.03);
+      }
+    }
+
+    .card__last::before {
+      transform: skewX(-14deg) scaleX(1);
+    }
+
+    .card__face--front:has(+ .card__face--back:not([data-back-pending])) {
+      transform: rotateY(-180deg);
+    }
+
+    .card__face--back:not([data-back-pending]) {
+      transform: rotateY(0deg);
+    }
+  }
+
+  /* Leaving for a detail page: snap back to the front so the morph starts from it.
+     (Outranks every card transition above – they are all single-class, zero-specificity scoped.) */
+  :global(:root[data-leaving]) .card__link * {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      /* Longhands on purpose: the minifier folds a full set into the `animation` shorthand,
+         where `view()` is invalid (timeline is reset-only there) and Chrome drops the rule. */
+      .card {
+        animation-name: card-rise;
+        animation-fill-mode: both;
+        animation-timing-function: linear;
+        animation-timeline: view();
+        animation-range: entry 0% entry 65%;
+      }
+    }
+  }
+
+  @keyframes card-rise {
+    from {
+      opacity: 0;
+      translate: 0 2.5rem;
+      scale: 0.96;
+    }
+  }
+</style>

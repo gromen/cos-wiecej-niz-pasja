@@ -1,0 +1,219 @@
+---
+/**
+ * „O kolekcjonerze”. Copy comes from the page strings object (marked PLACEHOLDER there).
+ * The goal bar fills to count/goal as it scrolls in (static, already filled, without motion).
+ */
+export interface AboutStrings {
+  kicker: string;
+  title: string;
+  paragraphs: string[];
+  stats: {
+    count: string;
+    goalLabel: string;
+    goal: number;
+    goalPrefix: string;
+    goalSuffix: string;
+    range: string;
+    rangeLabel: string;
+  };
+}
+
+interface Props {
+  count: number;
+  strings: AboutStrings;
+}
+
+const { count, strings } = Astro.props;
+const { stats } = strings;
+const ratio = Math.min(count / stats.goal, 1);
+---
+
+<section class="about" aria-labelledby="about-title">
+  <div class="head">
+    <p class="kicker">{strings.kicker}</p>
+    <h2 id="about-title">{strings.title}</h2>
+  </div>
+
+  <div class="body">
+    {strings.paragraphs.map((text) => <p>{text}</p>)}
+  </div>
+
+  <dl class="stats">
+    <div class="stat">
+      <dt>{stats.count}</dt>
+      <dd class="value">{count}</dd>
+    </div>
+    <div class="stat stat--goal">
+      <dt>{stats.goalLabel}</dt>
+      <dd class="value">{stats.goalPrefix}{stats.goal}{stats.goalSuffix}</dd>
+      <dd class="meter" style={`--ratio:${ratio.toFixed(3)}`}>
+        <span class="visually-hidden">{count} / {stats.goal}</span>
+        <span class="fill" aria-hidden="true"></span>
+      </dd>
+    </div>
+    <div class="stat">
+      <dt>{stats.rangeLabel}</dt>
+      <dd class="value value--range">{stats.range}</dd>
+    </div>
+  </dl>
+</section>
+
+<style>
+  .about {
+    display: grid;
+    gap: 2rem;
+    padding: 16svh var(--gutter);
+    background: var(--c-white);
+    color: var(--c-ink);
+  }
+
+  .head {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-red);
+  }
+
+  h2 {
+    margin: 0;
+    max-inline-size: 12ch;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 900;
+    font-stretch: 75%;
+    line-height: 0.92;
+    text-transform: uppercase;
+  }
+
+  .body {
+    display: grid;
+    gap: 1rem;
+    max-inline-size: 58ch;
+
+    & p {
+      margin: 0;
+      font-size: var(--fs-md);
+      color: var(--c-navy);
+      text-wrap: pretty;
+    }
+
+    & p:first-child {
+      font-size: var(--fs-lg);
+      font-weight: 600;
+      font-stretch: 90%;
+      line-height: 1.25;
+      color: var(--c-ink);
+    }
+  }
+
+  .stats {
+    display: grid;
+    gap: 0;
+    margin: 1rem 0 0;
+    border-block-start: 3px solid var(--c-red);
+  }
+
+  .stat {
+    display: grid;
+    gap: 0.4rem;
+    padding: 1.25rem 0;
+    border-block-end: 1px solid rgb(13 49 79 / 0.18);
+
+    & dt {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--c-navy);
+    }
+
+    & dd {
+      margin: 0;
+    }
+  }
+
+  .value {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 2rem + 6vw, 7rem);
+    font-weight: 900;
+    font-stretch: 70%;
+    line-height: 0.85;
+    color: var(--c-red);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .value--range {
+    font-size: clamp(2rem, 1.4rem + 3vw, 4rem);
+    font-stretch: 80%;
+  }
+
+  .stat--goal .value {
+    color: transparent;
+    -webkit-text-stroke: 2px var(--c-red);
+  }
+
+  .meter {
+    position: relative;
+    block-size: 0.6rem;
+    margin-block-start: 0.5rem;
+    background: rgb(198 16 46 / 0.14);
+  }
+
+  .fill {
+    position: absolute;
+    inset: 0;
+    background: var(--c-red);
+    transform-origin: left;
+    transform: scaleX(var(--ratio));
+  }
+
+  @media (min-width: 64rem) {
+    .about {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: 2rem;
+      row-gap: 3rem;
+    }
+
+    .head {
+      grid-column: 1 / span 5;
+    }
+
+    .body {
+      grid-column: 7 / span 6;
+      align-self: end;
+    }
+
+    .stats {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, 1fr);
+      column-gap: 2rem;
+    }
+
+    .stat {
+      border-block-end: 0;
+    }
+  }
+
+  @keyframes meter {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .fill {
+        animation: meter linear both;
+        animation-timeline: view();
+        animation-range: entry 40% cover 50%;
+      }
+    }
+  }
+</style>

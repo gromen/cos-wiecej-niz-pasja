@@ -1,0 +1,193 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/site/SiteHeader.astro';
+import Grain from '../components/home/Grain.astro';
+import Kickoff from '../components/home/Kickoff.astro';
+import Counter from '../components/home/Counter.astro';
+import Terrace from '../components/home/Terrace.astro';
+import Flip from '../components/home/Flip.astro';
+import Szatnia from '../components/home/Szatnia.astro';
+import Seasons from '../components/home/Seasons.astro';
+import Featured from '../components/home/Featured.astro';
+import CollectionLink from '../components/home/CollectionLink.astro';
+import About from '../components/home/About.astro';
+import Follow, { type FollowLink } from '../components/home/Follow.astro';
+import HomeFooter from '../components/home/HomeFooter.astro';
+import Wall from '../components/home/wall/Wall.astro';
+import { getShirts } from '../lib/shirts';
+import { socials } from '../data/collection';
+
+/** X/Twitter handle without „@” – unknown yet (TODO). The link renders only when this is set. */
+const X_HANDLE = '';
+
+const shirts = await getShirts();
+const total = shirts.length;
+const real = shirts.filter(({ data }) => !data.draft);
+const byAge = [...real].filter(({ data }) => data.seasonStart).sort((a, b) => a.data.seasonStart! - b.data.seasonStart!);
+const oldest = byAge.at(0)?.data.season ?? '';
+const newest = byAge.at(-1)?.data.season ?? '';
+/** „lata 70/80” → „70/80” (short form for the stats); a plain season stays as is. */
+const oldestShort = oldest.replace(/^lata\s+/i, '');
+/** Genitive for „od …”: „lata 70/80” → „lat 70/80”, „1987/88” → „sezonu 1987/88”. */
+const fromOldest = /^lata\s/i.test(oldest) ? `lat ${oldestShort}` : `sezonu ${oldest}`;
+/** Polish accusative plural of „koszulka” for a count (1 koszulkę, 2–4 koszulki, 5+ koszulek). */
+const shirtsWord = (n: number): string =>
+  ({ one: 'koszulkę', few: 'koszulki' } as Record<string, string>)[new Intl.PluralRules('pl').select(n)] ?? 'koszulek';
+
+/* ─────────────── Copy (PL). EN version later: mirror this object. ─────────────── */
+const t = {
+  meta: {
+    title: 'Coś więcej niż pasja – kolekcja meczowych koszulek Wisły Kraków',
+    description: `${total} meczowych koszulek Wisły Kraków – od ${fromOldest} po sezon ${newest}. Historie, mecze i autografy z kolekcji @cos_wiecej_niz_pasja.`,
+  },
+  kickoff: {
+    title: 'Coś więcej niż pasja',
+    words: ['COŚ', 'WIĘCEJ', 'NIŻ', 'PASJA'],
+    eyebrow: 'Wisła Kraków · kolekcja meczowych koszulek',
+    sash: '★ Biała Gwiazda ★ mecz po meczu ★ koszulka po koszulce',
+  },
+  counter: {
+    title: '{n} meczowych koszulek Białej Gwiazdy',
+    label: 'meczowych koszulek',
+    labelStrong: 'Białej Gwiazdy',
+  },
+  terrace: {
+    title: 'Na trybunie: nazwiska z kolekcji',
+    pause: 'Pauza animacji',
+  },
+  szatnia: {
+    kicker: 'Prosto z wieszaka',
+    title: 'Szatnia',
+    sub: 'Eksponaty #{from}–#{to} · przód i plecy · każda z własną historią',
+    hintPointer: 'Przeciągnij wieszak · najedź, by odwrócić →',
+    hintTouch: 'Przesuń w bok →',
+    stripLabel: 'Wieszak z koszulkami – strzałki przechodzą między koszulkami',
+    number: 'numer',
+    tagNo: 'Nr',
+    open: 'zobacz koszulkę',
+  },
+  seasons: {
+    flipKicker: 'Od lat 70/80 do dziś',
+    title: 'Sezony',
+    kicker: 'Oś czasu kolekcji',
+    hint: 'Przesuń w bok →',
+    approxPrefix: 'lata',
+    number: 'numer',
+    open: 'zobacz koszulkę',
+    navLabel: 'Skocz do sezonu',
+  },
+  collectionLink: 'Zobacz całą kolekcję',
+  /** Second CTA – distinct label so the two links aren't announced identically. `{n}` = count. */
+  collectionLinkBrowse: `Przeglądaj wszystkie {n} ${shirtsWord(total)}`,
+  featured: {
+    kicker: 'Z gabloty',
+    title: 'Wybrane eksponaty',
+    lead: 'Cztery koszulki, cztery historie – od najstarszej i najbardziej zagadkowej po mecz pełen wspomnień.',
+    number: 'numer',
+    post: 'Post #',
+    more: 'Poznaj historię',
+    signed: 'z autografem',
+  },
+  /*
+   * PLACEHOLDER – „O kolekcjonerze”. Draft based on the Instagram bio; Kamil should
+   * replace it with his own words (and confirm the goal and the Socios mention).
+   */
+  about: {
+    kicker: 'O kolekcjonerze',
+    title: 'Cześć, tu Kamil',
+    paragraphs: [
+      'Kolekcja poświęcona głównie meczowym koszulkom Wisły Kraków.',
+      'Zbieram koszulki grane i przygotowane na mecze – od legend sprzed dekad po zawodników obecnej kadry. Każda ma swój numer, sezon i historię, którą staram się udokumentować. Część wciąż czeka na rozwikłanie – jeśli coś wiesz, napisz.',
+      'Członek Socios Wisła – bo Wisła to coś więcej niż klub.',
+    ],
+    stats: {
+      count: 'koszulek w kolekcji',
+      goalLabel: 'cel',
+      goal: 90,
+      goalPrefix: '',
+      goalSuffix: '+',
+      rangeLabel: 'zakres sezonów',
+      range: `${oldestShort} → ${newest}`,
+    },
+  },
+  follow: {
+    kicker: 'Śledź kolekcję',
+    title: 'Śledź kolekcję w mediach społecznościowych',
+    newTab: '(otwiera się w nowej karcie)',
+    sash: '★ @cos_wiecej_niz_pasja ★ nowe eksponaty na bieżąco',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    x: 'X',
+  },
+  footer: {
+    brand: 'Coś więcej niż pasja',
+    disclaimer: 'Nieoficjalna strona kolekcjonerska – nie jest powiązana z TS Wisła Kraków SA.',
+    nav: 'Stopka',
+    collection: 'Kolekcja',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    newTab: '(otwiera się w nowej karcie)',
+    copyright: 'Coś więcej niż pasja',
+  },
+};
+
+/** Pull-quotes must be verbatim fragments of story.pl (Featured falls back to the full story). */
+const picks = [
+  { id: '87-iwan-7', quote: 'Najstarsza i najbardziej kontrowersyjna koszulka w kolekcji – z podpisem śp. Andrzeja Iwana.' },
+  { id: '91-letkiewicz-28', quote: 'Przy jej przesyłce była mała afera z Pocztą Polską – ale finalnie wszystko skończyło się dobrze.' },
+  { id: '89-buksa-44', quote: 'Aleksander nie był jeszcze pełnoletni, więc nie mógł grać w koszulce z logo bukmachera LV BET – stąd napis „Łączy nas pasja”.' },
+  { id: '93-iliev-77', quote: 'na boisku zobaczyłem piłkarzy, których grą zachwycałem się jako dziecko, a później nastolatek przed telewizorem.' },
+];
+
+const followLinks: FollowLink[] = [
+  { label: t.follow.instagram, handle: '@cos_wiecej_niz_pasja', href: socials.instagram },
+  { label: t.follow.facebook, handle: 'Coś więcej niż pasja', href: socials.facebook },
+  ...(X_HANDLE ? [{ label: t.follow.x, handle: `@${X_HANDLE}`, href: `https://x.com/${X_HANDLE}` }] : []),
+];
+---
+
+<BaseLayout title={t.meta.title} description={t.meta.description} themeColor="#c6102e">
+  <Grain />
+  <!-- Fixed floating bar over the kick-off (its top padding already clears the bar). -->
+  <SiteHeader tone="red" current="start" overlay />
+
+  <main id="main" class="home">
+    <Kickoff strings={t.kickoff} />
+    <Counter count={total} strings={t.counter} />
+    <Terrace strings={t.terrace} />
+    <Szatnia shirts={shirts} strings={t.szatnia} />
+
+    <Flip id="seasons-title" title={t.seasons.title} kicker={t.seasons.flipKicker} />
+    <Seasons shirts={shirts} strings={t.seasons} labelledby="seasons-title" />
+    <CollectionLink label={t.collectionLink} count={total} tone="white" />
+
+    <Featured shirts={shirts} picks={picks} strings={t.featured} />
+    <CollectionLink label={t.collectionLinkBrowse} count={total} tone="ink" />
+
+    <Wall />
+
+    <About count={total} strings={t.about} />
+    <Follow links={followLinks} strings={t.follow} />
+  </main>
+
+  <HomeFooter strings={t.footer} instagram={socials.instagram} facebook={socials.facebook} />
+</BaseLayout>
+
+<style is:global>
+  /* Registered so the 0→count counter can be animated by pure CSS.
+     The shown value always comes from Counter's inline --target, never from this initial value. */
+  @property --n {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 0;
+  }
+
+  /* Scoped to this page and more specific than base.css `body`, so source order doesn't matter. */
+  html:has(.home) body {
+    background: var(--c-red);
+  }
+</style>
+
+<script>
+  import '../components/home/home';
+</script>

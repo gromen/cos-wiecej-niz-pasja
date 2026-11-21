@@ -1,0 +1,772 @@
+---
+/**
+ * First screen of the shirt page – „Trybuna” stage with the exhibit.
+ * `.vt` carries the shared view-transition name (same as the grid card), so the
+ * card morphs into this exhibit. Tilt/flip/sheen are wired in ./detail.ts, the lens in ./lens.ts.
+ *
+ * Photo shirts (`images.front/back`): the front is the only early image – the back cut-out
+ * waits in a <template> that detail.ts mounts on the first flip intent (or on idle after
+ * `load`). The sheen is masked by the photo's own alpha, reusing the URL the <picture>
+ * already loaded (`currentSrc`, set from JS), so masks never cost a download. The „Lupa”
+ * magnifier gets the largest rendition (front/back, AVIF + WebP) – its URLs sit in
+ * `data-lens` and are only requested once the lens is about to open. Drafts render as before.
+ */
+import { getImage } from 'astro:assets';
+import ShirtFace from '../shirt/ShirtFace.astro';
+import { kindLabel, lastName, shirtTransitionName, type ShirtEntry } from '../../lib/shirts';
+import { t } from './copy';
+
+interface Props {
+  entry: ShirtEntry;
+  /** 0-based position in getShirts() order. */
+  index: number;
+  total: number;
+}
+
+const { entry, index, total } = Astro.props;
+const { id, data } = entry;
+
+const surname = lastName(data.player).toUpperCase();
+// Longest word drives the h1 size, so long surnames never break mid-word.
+const longestWord = Math.max(...data.player.split(/\s+/).map((word) => word.length));
+const sash = Array.from({ length: 8 }, () => surname).join(' ★ ');
+const position = String(index + 1).padStart(String(total).length, '0');
+const season = data.season ? `${data.seasonApprox ? `${t.approx} ` : ''}${data.season}` : undefined;
+const eyebrow = [data.kind !== 'unknown' ? kindLabel[data.kind].pl : undefined, season, data.competition].filter(
+  (part): part is string => Boolean(part),
+);
+
+const front = data.images?.front;
+const back = data.images?.back;
+const isPhoto = Boolean(front);
+
+const lensOf = async (photo: NonNullable<typeof front>): Promise<{ avif: string; webp: string; width: number }> => {
+  // The cut-outs are 1000 px wide – Astro never enlarges, so this is the largest rendition.
+  const width = Math.min(2000, photo.width);
+  const [avif, webp] = await Promise.all([
+    getImage({ src: photo, width, format: 'avif' }),
+    getImage({ src: photo, width, format: 'webp' }),
+  ]);
+  return { avif: avif.src, webp: webp.src, width };
+};
+const lens = front ? JSON.stringify([await lensOf(front), await lensOf(back ?? front)]) : undefined;
+const photoSizes = '(min-width: 60rem) min(40vw, 38rem, 58svh), min(86vw, 30rem, 43svh)';
+const photoWidths = [400, 600, 800, 1000];
+const starPoints = '12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6';
+---
+
+<section class="stage" aria-labelledby="exhibit-title" data-stage>
+  <div class="backdrop" aria-hidden="true">
+    <svg class="bigstar" viewBox="0 0 24 24" focusable="false"><polygon points={starPoints}></polygon></svg>
+    <span class="ghost">{data.number}</span>
+    <div class="sash"><span>{sash}</span></div>
+  </div>
+
+  <div class="bar">
+    <a class="back" href="/kolekcja/" data-back style="--i:0">
+      <span aria-hidden="true">←</span>
+      {t.back}
+    </a>
+    <p class="count" style="--i:1">{t.exhibit} <b>{position}</b>&nbsp;/&nbsp;{total}</p>
+  </div>
+
+  <div class="exhibit" data-exhibit data-flipped="false" data-photo={isPhoto ? '' : undefined} data-lens={lens}>
+    <div class="vt" style={`view-transition-name: ${shirtTransitionName(id)}`} data-vt-self>
+      <div class="tilt" data-tilt>
+        <div class="card">
+          <div class="face face--front" data-face="front">
+            <ShirtFace
+              shirt={data}
+              side="front"
+              uid={`ex-f-${id}`}
+              priority
+              alt={t.photoAlt('front', data.player, data.number)}
+              {...isPhoto && { sizes: photoSizes, widths: photoWidths }}
+            />
+            <span class="sheen-clip"><span class="sheen" data-sheen></span></span>
+          </div>
+          <div class="face face--back" data-face="back" inert>
+            {
+              back ? (
+                <template data-back-face>
+                  <ShirtFace
+                    shirt={data}
+                    side="back"
+                    uid={`ex-b-${id}`}
+                    alt={t.photoAlt('back', data.player, data.number)}
+                    sizes={photoSizes}
+                    widths={photoWidths}
+                  />
+                </template>
+              ) : (
+                <ShirtFace
+                  shirt={data}
+                  side="back"
+                  uid={`ex-b-${id}`}
+                  alt={t.photoAlt('back', data.player, data.number)}
+                  {...isPhoto && { sizes: photoSizes, widths: photoWidths }}
+                />
+              )
+            }
+            <span class="sheen-clip"><span class="sheen" data-sheen></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="flip" data-flip aria-pressed="false" hidden>
+      <span class="pill">{t.flip} <span class="pill-icon" aria-hidden="true">↻</span></span>
+    </button>
+
+    {
+      isPhoto && (
+        <>
+          <div class="lens" data-lens-view aria-hidden="true" hidden>
+            <div class="lens-img" data-lens-img />
+          </div>
+          <button
+            type="button"
+            class="lupa"
+            data-lens-toggle
+            aria-pressed="false"
+            aria-describedby="lens-help"
+            hidden
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="10" cy="10" r="6.5" />
+              <path d="M15 15l6 6" />
+            </svg>
+            {t.lens}
+          </button>
+          <span id="lens-help" class="visually-hidden">
+            {t.lensHelp}
+          </span>
+        </>
+      )
+    }
+  </div>
+
+  <div class="title">
+    {
+      eyebrow.length > 0 && (
+        <p class="eyebrow" style="--i:1">
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <polygon points={starPoints} />
+          </svg>
+          {eyebrow.join(' · ')}
+        </p>
+      )
+    }
+    <h1 id="exhibit-title" style={`--i:2;--len:${longestWord}`}>
+      <span class="player">{data.player}</span>{' '}
+      <span class="no"><span class="visually-hidden">{t.numberSr} </span>{data.number}</span>
+    </h1>
+    <p class="hint" data-hint style="--i:4">
+      <span class="hint-touch">{t.hintTouch}</span>
+      <span class="hint-keys">{t.hintKeys}</span>
+    </p>
+  </div>
+</section>
+
+<style>
+  .stage {
+    --tilt-angle: -11deg;
+
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'bar'
+      'exhibit'
+      'title';
+    align-content: start;
+    row-gap: clamp(1rem, 3svh, 2rem);
+    padding: 0.25rem var(--gutter) clamp(2rem, 6svh, 4rem);
+    background:
+      radial-gradient(90% 60% at 50% 42%, var(--c-red) 0%, transparent 75%),
+      linear-gradient(var(--c-red), var(--c-red-deep));
+    color: var(--c-white);
+
+    /* Static grain, rasterised once. */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.08;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+  }
+
+  /* ---------- backdrop: anchored to the exhibit's centre ---------- */
+  .backdrop {
+    grid-area: exhibit;
+    place-self: center;
+    position: relative;
+    z-index: 0;
+    inline-size: 0;
+    block-size: 0;
+    pointer-events: none;
+  }
+
+  .ghost,
+  .sash,
+  .bigstar {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+  }
+
+  .ghost {
+    translate: -50% -52%;
+    font-family: var(--font-display);
+    font-size: min(118vw, 70svh);
+    font-weight: 900;
+    font-stretch: 72%;
+    line-height: 0.8;
+    letter-spacing: -0.02em;
+    color: transparent;
+    -webkit-text-stroke: max(1.5px, 0.006em) rgb(250 250 250 / 0.55);
+    white-space: nowrap;
+  }
+
+  .sash {
+    inline-size: 320vw;
+    translate: -50% -50%;
+    rotate: var(--tilt-angle);
+    overflow: hidden;
+    padding-block: 0.12em 0.04em;
+    background: var(--c-white);
+    color: var(--c-red);
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 12vw, 7.5rem);
+    font-weight: 900;
+    font-stretch: 125%;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+
+    & span {
+      display: block;
+    }
+  }
+
+  .bigstar {
+    inline-size: min(70vw, 46svh);
+    translate: 8% -105%;
+    fill: none;
+    stroke: var(--c-white);
+    stroke-width: 0.12;
+    opacity: 0.28;
+  }
+
+  /* ---------- top bar ---------- */
+  .bar {
+    grid-area: bar;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .back {
+    display: inline-flex;
+    gap: 0.5em;
+    padding-block: 0.6rem;
+    text-decoration: none;
+    border-block-end: 1px solid transparent;
+    transition: border-color var(--dur-fast);
+
+    &:hover {
+      border-block-end-color: currentColor;
+    }
+  }
+
+  .count {
+    margin: 0;
+
+    & b {
+      font-weight: 700;
+    }
+  }
+
+  /* ---------- exhibit ---------- */
+  .exhibit {
+    grid-area: exhibit;
+    justify-self: center;
+    position: relative;
+    z-index: 1;
+    inline-size: min(86vw, calc(52svh * 5 / 6), 30rem);
+    aspect-ratio: 5 / 6;
+
+    /* Floor shadow – a static gradient, never a filter (filters flatten the 3D flip). */
+    &::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset-inline: 10%;
+      inset-block-end: -5%;
+      block-size: 10%;
+      background: radial-gradient(closest-side, rgb(20 0 6 / 0.55), transparent);
+    }
+  }
+
+  .vt {
+    inline-size: 100%;
+    block-size: 100%;
+    perspective: 1100px;
+    view-transition-class: exhibit;
+  }
+
+  .tilt,
+  .card {
+    position: relative;
+    inline-size: 100%;
+    block-size: 100%;
+    transform-style: preserve-3d;
+  }
+
+  .card {
+    transition: transform 850ms cubic-bezier(0.3, 1.15, 0.4, 1);
+  }
+
+  .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .face--back {
+    transform: rotateY(180deg);
+  }
+
+  [data-flipped='true'] .card {
+    transform: rotateY(180deg);
+  }
+
+  /* Sheen: an HTML overlay clipped to the shirt silhouette, moved only by transform. */
+  .sheen-clip {
+    display: none;
+  }
+
+  .flip {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    align-items: end;
+    justify-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+
+    &[hidden] {
+      display: none;
+    }
+
+    &:focus-visible {
+      outline-offset: 8px;
+    }
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    translate: 0 55%;
+    padding: 0.5rem 0.95rem;
+    border-radius: 99px;
+    background: var(--c-white);
+    color: var(--c-red);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    box-shadow: 0 0.4rem 1.2rem rgb(40 0 10 / 0.35);
+    transition: scale var(--dur-fast) var(--ease-out);
+  }
+
+  .pill-icon {
+    display: inline-block;
+    transition: rotate var(--dur) var(--ease-out);
+  }
+
+  /* ---------- photo shirts: lens („Lupa”) ---------- */
+  .exhibit[data-photo] {
+    -webkit-touch-callout: none;
+    user-select: none;
+
+    /* Lens on: dragging moves it instead of scrolling; zoom cursor over the shirt only now. */
+    &[data-lens-on] {
+      touch-action: none;
+
+      & .flip {
+        cursor: zoom-in;
+      }
+
+      & .pill {
+        cursor: pointer;
+      }
+    }
+  }
+
+  .lupa {
+    position: absolute;
+    z-index: 4;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    min-block-size: 2.75rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid rgb(250 250 250 / 0.55);
+    border-radius: 99px;
+    background: rgb(70 0 14 / 0.35);
+    color: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(6px);
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast);
+
+    &[hidden] {
+      display: none;
+    }
+
+    & svg {
+      inline-size: 1.1em;
+      block-size: 1.1em;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+    }
+
+    &:hover {
+      background: rgb(70 0 14 / 0.6);
+    }
+
+    &[aria-pressed='true'] {
+      border-color: transparent;
+      background: var(--c-white);
+      color: var(--c-red);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--c-white);
+      outline-offset: 3px;
+    }
+  }
+
+  /* Circle following the pointer; the inner layer is the large rendition, moved by transform. */
+  .lens {
+    --lens-d: clamp(8rem, 44%, 15rem);
+
+    position: absolute;
+    z-index: 3;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    inline-size: var(--lens-d);
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--c-red-deep);
+    box-shadow:
+      0 0 0 3px var(--c-white),
+      0 0.8rem 2rem rgb(30 0 8 / 0.5);
+    pointer-events: none;
+    contain: strict;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  .lens-img {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    transform-origin: 0 0;
+  }
+
+  .flip:hover .pill {
+    scale: 1.06;
+  }
+
+  .flip:active .pill {
+    scale: 0.96;
+  }
+
+  .flip[aria-pressed='true'] .pill-icon {
+    rotate: 180deg;
+  }
+
+  /* ---------- title ---------- */
+  .title {
+    --h1-max: 4.5rem;
+
+    grid-area: title;
+    container-type: inline-size;
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 0.75rem;
+    padding-block-start: 1rem;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .star {
+    flex: none;
+    inline-size: 1.1em;
+    block-size: 1.1em;
+    fill: var(--c-white);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    /* ~0.62em per uppercase glyph at 75% width: the longest word fills the column at most. */
+    font-size: clamp(2rem, calc(100cqi / (var(--len, 8) * 0.62)), var(--h1-max));
+    font-weight: 900;
+    font-stretch: 75%;
+    line-height: 0.86;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    overflow-wrap: break-word;
+  }
+
+  .no {
+    display: inline-block;
+    font-stretch: 100%;
+    color: transparent;
+    -webkit-text-stroke: max(1.5px, 0.025em) var(--c-white);
+  }
+
+  .hint {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
+    opacity: 0.8;
+
+    /* Space is reserved (no layout shift); shown once JS – which powers flip/swipe/keys – runs. */
+    &:not([data-on]) {
+      visibility: hidden;
+    }
+  }
+
+  .hint-keys {
+    display: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .hint-touch {
+      display: none;
+    }
+
+    .hint-keys {
+      display: inline;
+    }
+  }
+
+  /* ---------- wide screens: text left, exhibit right ---------- */
+  @media (min-width: 60rem) {
+    .stage {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      grid-template-areas:
+        'bar bar'
+        'title exhibit';
+      align-items: center;
+      column-gap: clamp(2rem, 5vw, 5rem);
+      min-block-size: calc(100svh - 4.5rem);
+    }
+
+    .exhibit {
+      inline-size: min(100%, calc(70svh * 5 / 6), 38rem);
+    }
+
+    .ghost {
+      font-size: min(58vw, 100svh);
+    }
+
+    /* The sash emerges from behind the shirt and runs off to the right – never under the title. */
+    .sash {
+      font-size: clamp(4rem, 7vw, 8rem);
+      mask-image: linear-gradient(to right, transparent calc(50% - 26rem), #000 calc(50% - 15rem));
+    }
+
+    .title {
+      --h1-max: 7.5rem;
+
+      padding-block: 0 8svh;
+    }
+  }
+
+  /* ---------- motion (opt-in) ----------
+   * Budget: everything is on screen within ~300 ms. No element starts fully hidden behind a
+   * long delay, and the exhibit never fades – if a view transition is skipped (or the
+   * `vt-in` gate misses) the first frame still shows the shirt, never an empty stage. */
+  @media (prefers-reduced-motion: no-preference) {
+    .bar > *,
+    .title > *,
+    .pill {
+      animation: dt-enter 360ms var(--ease-out) calc(var(--i, 4) * 35ms) backwards;
+    }
+
+    .sash {
+      animation: dt-sash 600ms var(--ease-out) backwards;
+    }
+
+    .ghost {
+      animation: dt-ghost 700ms var(--ease-out) 40ms backwards;
+    }
+
+    .bigstar {
+      animation: dt-star 800ms var(--ease-out) 60ms backwards;
+    }
+
+    /* Direct visits only – after a view-transition morph the shirt is already in place.
+       Transform only (no opacity), no delay. */
+    :global(html:not(.vt-in)) .vt {
+      animation: dt-rise 520ms var(--ease-out);
+    }
+
+    /* Arriving through a view transition the root snapshot already fades in:
+       keep only a light stagger on the text so it does not fade twice. */
+    :global(html.vt-in) .bar > *,
+    :global(html.vt-in) .title > *,
+    :global(html.vt-in) .pill {
+      animation-duration: 280ms;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .sheen-clip {
+        position: absolute;
+        inset: 0;
+        display: block;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--dur) var(--ease-out);
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 480'%3E%3Cpath d='M135 24 L60 54 L8 150 L62 176 L92 130 L92 450 Q200 470 308 450 L308 130 L338 176 L392 150 L340 54 L265 24 Q200 66 135 24 Z'/%3E%3C/svg%3E")
+          center / 100% 100% no-repeat;
+      }
+
+      .sheen {
+        position: absolute;
+        inset: -40%;
+        background: radial-gradient(closest-side, rgb(255 255 255 / 0.32), rgb(255 255 255 / 0.08) 55%, transparent);
+      }
+
+      /* Photo: the highlight follows the cut-out's own alpha, not the generic silhouette.
+         `--mask` + [data-masked] are set by detail.ts once the face's picture has loaded. */
+      .exhibit[data-photo] .sheen-clip {
+        mask: var(--mask) center / 100% 100% no-repeat;
+
+        &:not([data-masked]) {
+          display: none;
+        }
+      }
+
+      .exhibit.is-live .sheen-clip {
+        opacity: 1;
+      }
+
+      .lens:not([hidden]) {
+        animation: dt-lens 180ms var(--ease-out);
+      }
+
+      .exhibit.is-live .sheen,
+      .exhibit.is-live .tilt {
+        will-change: transform;
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card,
+    .pill,
+    .pill-icon {
+      transition: none;
+    }
+  }
+
+  @keyframes dt-lens {
+    from {
+      opacity: 0;
+      scale: 0.6;
+    }
+  }
+
+  @keyframes dt-enter {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+  }
+
+  @keyframes dt-sash {
+    from {
+      opacity: 0;
+      transform: translateX(-18%);
+    }
+  }
+
+  @keyframes dt-ghost {
+    from {
+      opacity: 0;
+      transform: scale(1.18);
+    }
+  }
+
+  @keyframes dt-star {
+    from {
+      opacity: 0;
+      transform: rotate(-120deg) scale(0.4);
+    }
+  }
+
+  @keyframes dt-rise {
+    from {
+      transform: translateY(4%) scale(0.97);
+    }
+  }
+</style>

@@ -1,0 +1,96 @@
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Native cross-document View Transitions (MPA, no JS). Shared elements use
+   `view-transition-name: shirt-<id>` – see shirtTransitionName() in src/lib/shirts.ts. */
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
+html {
+  color-scheme: dark;
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  /* Dual ring (WCAG 1.4.11): gold outline sandwiched in an ink halo – the gold reads on ink/navy
+     (≈10:1), the ink on white (≈18:1) and club red (≈3.2:1), so one style works on every surface.
+     The 6px halo = 2px offset + 2px outline + 2px outer edge. */
+  outline: 2px solid var(--c-gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--c-ink);
+}
+
+/* In-page jumps (skip link, #kolekcja-lista, any fragment) clear the fixed floating bar.
+   :where() keeps it overridable by components. */
+:where([id], #main, #kolekcja-lista) {
+  scroll-margin-block-start: var(--hdr-space);
+}
+
+/* Visible only while focused; first tab stop on every page (above the header's z 60). */
+.skip-link {
+  position: absolute;
+  z-index: 100;
+  inset-block-start: max(0.75rem, env(safe-area-inset-top, 0px));
+  inset-inline-start: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding: 0.7em 1.1em;
+  background: var(--c-ink);
+  color: var(--c-white);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  translate: 0 calc(-100% - 1.5rem);
+  transition: translate var(--dur-fast) var(--ease-out);
+
+  &:focus {
+    translate: none;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

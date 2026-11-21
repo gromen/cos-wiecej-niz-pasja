@@ -1,0 +1,52 @@
+---
+import { socials } from '../../data/collection';
+import type { CollectionStrings } from './strings';
+
+interface Props {
+  strings: CollectionStrings['footer'];
+}
+
+const { strings } = Astro.props;
+---
+
+<footer class="foot">
+  <p class="foot__line">
+    <span>{strings.disclaimer}</span>
+    <a href={socials.instagram} rel="noopener" target="_blank">
+      {strings.instagram}<span class="visually-hidden"> {strings.newTab}</span> ↗
+    </a>
+  </p>
+</footer>
+
+<style>
+  .foot {
+    padding: 1.5rem var(--gutter) max(1.5rem, env(safe-area-inset-bottom));
+    border-block-start: 1px solid var(--line);
+  }
+
+  .foot__line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+
+    a {
+      padding-block: 0.4rem;
+      color: var(--fg);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      border-block-end: 1px solid var(--c-red);
+
+      &:hover {
+        border-color: var(--c-white);
+      }
+    }
+  }
+</style>

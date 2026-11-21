@@ -1,0 +1,93 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const variants = [
+  { href: '/proto/a', key: 'A', name: 'Ściana', desc: 'Prawdziwe zdjęcie kolekcji jako interaktywny hero – hover na koszulce, zoom scrollem.' },
+  { href: '/proto/b', key: 'B', name: 'Trybuna', desc: 'Kinetyczna typografia, ukośny pas, licznik 86, taśma z nazwiskami.' },
+  { href: '/proto/c', key: 'C', name: 'Muzeum', desc: 'Granat, punktowe światło, jedna koszulka-eksponat z obrotem przód/tył.' },
+];
+---
+
+<BaseLayout noindex title="Prototypy hero – Coś więcej niż pasja">
+  <main class="hub">
+    <p class="eyebrow">Prototypy · krok 1</p>
+    <h1>Coś więcej niż pasja</h1>
+    <ul>
+      {variants.map((v) => (
+        <li>
+          <a href={v.href}>
+            <span class="key">{v.key}</span>
+            <span class="name">{v.name}</span>
+            <span class="desc">{v.desc}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </main>
+</BaseLayout>
+
+<style>
+  .hub {
+    max-width: 60rem;
+    margin-inline: auto;
+    padding: 12svh var(--gutter);
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: var(--fs-xl);
+      font-stretch: 75%;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 0.95;
+      margin: 0 0 2rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 1px;
+      background: var(--line);
+    }
+
+    a {
+      display: grid;
+      grid-template-columns: 3rem 1fr;
+      gap: 0.25rem 1rem;
+      padding: 1.25rem 1rem;
+      background: var(--bg);
+      text-decoration: none;
+      transition: background var(--dur-fast);
+
+      &:hover {
+        background: var(--bg-raised);
+      }
+    }
+  }
+
+  .eyebrow,
+  .key {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--accent-2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .key {
+    grid-row: span 2;
+    font-size: var(--fs-lg);
+    color: var(--accent);
+  }
+
+  .name {
+    font-weight: 700;
+    font-size: var(--fs-lg);
+  }
+
+  .desc {
+    color: var(--fg-muted);
+    font-size: var(--fs-sm);
+  }
+</style>

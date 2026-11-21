@@ -1,0 +1,506 @@
+---
+/**
+ * „Wybrane eksponaty” – a few real shirts with the best stories, as big editorial spreads.
+ * Mobile: stacked. Desktop: visual and text alternate left/right.
+ * Pull-quotes must be verbatim fragments of `story.pl` (checked at build time).
+ */
+import ShirtFace from '../shirt/ShirtFace.astro';
+import { lastName, shirtHref, shirtTransitionName, statusLabel, type ShirtEntry } from '../../lib/shirts';
+
+export interface FeaturedPick {
+  id: string;
+  /** Verbatim fragment of story.pl – falls back to the whole story if it no longer matches. */
+  quote: string;
+}
+
+export interface FeaturedStrings {
+  title: string;
+  kicker: string;
+  lead: string;
+  number: string;
+  post: string;
+  more: string;
+  signed: string;
+}
+
+interface Props {
+  shirts: ShirtEntry[];
+  picks: FeaturedPick[];
+  strings: FeaturedStrings;
+}
+
+const { shirts, picks, strings } = Astro.props;
+
+const items = picks.flatMap((pick) => {
+  const entry = shirts.find((shirt) => shirt.id === pick.id && !shirt.data.draft);
+  if (!entry) return [];
+  const story = entry.data.story?.pl ?? '';
+  const quote = pick.quote && story.includes(pick.quote) ? pick.quote : story;
+  return quote ? [{ entry, quote }] : [];
+});
+
+const meta = (entry: ShirtEntry): string =>
+  [entry.data.season, entry.data.competition, statusLabel[entry.data.status].pl].filter(Boolean).join(' · ');
+---
+
+<section class="featured" aria-labelledby="featured-title">
+  <header class="intro">
+    <p class="kicker">{strings.kicker}</p>
+    <h2 id="featured-title">{strings.title}</h2>
+    <p class="lead">{strings.lead}</p>
+  </header>
+
+  <ol class="list" role="list">
+    {
+      items.map(({ entry, quote }, i) => {
+        const { data } = entry;
+        const titleId = `ex-${entry.id}`;
+        return (
+          <li class="item" style={`--k:${i}`}>
+            <article class="spread" aria-labelledby={titleId} data-reveal>
+              <a class="stage" href={shirtHref(entry.id)} tabindex="-1" aria-hidden="true" data-shirt-link data-astro-prefetch="hover">
+                <span class="bignum">{data.number}</span>
+                <span class="sash" />
+                <span class="visual" data-vt={shirtTransitionName(entry.id)}>
+                  <ShirtFace shirt={data} uid={`ex-${entry.id}`} sizes="(min-width: 64rem) 36vw, 82vw" />
+                </span>
+                {data.signed && (
+                  <span class="signed">★ {strings.signed}</span>
+                )}
+              </a>
+
+              <div class="copy">
+                <p class="meta">
+                  {data.igPost && <span class="post">{strings.post}{data.igPost}</span>}
+                  <span>{meta(entry)}</span>
+                </p>
+                <h3 id={titleId} class="name">
+                  <span class="first">{data.player.slice(0, data.player.length - lastName(data.player).length).trim()}</span>
+                  <span class="last">{lastName(data.player)}</span>
+                  <span class="num">
+                    <span class="visually-hidden">{strings.number} </span>
+                    {data.number}
+                  </span>
+                </h3>
+                <blockquote class="quote">
+                  <p>{quote}</p>
+                </blockquote>
+                <a class="more" href={shirtHref(entry.id)} data-shirt-link data-astro-prefetch="hover">
+                  {strings.more}
+                  <span class="visually-hidden">: {data.player}</span>
+                  <svg viewBox="0 0 24 12" aria-hidden="true" focusable="false">
+                    <path d="M0 6h22M17 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                </a>
+              </div>
+            </article>
+          </li>
+        );
+      })
+    }
+  </ol>
+</section>
+
+<style>
+  .featured {
+    position: relative;
+    overflow: clip;
+    padding: 18svh var(--gutter) 12svh;
+    background: var(--c-ink);
+    color: var(--c-white);
+  }
+
+  .intro {
+    display: grid;
+    gap: 1rem;
+    max-inline-size: 60rem;
+    margin-block-end: 10svh;
+  }
+
+  .kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-mega);
+    font-weight: 900;
+    font-stretch: 70%;
+    line-height: 0.86;
+    text-transform: uppercase;
+  }
+
+  .lead {
+    margin: 0;
+    max-inline-size: 46ch;
+    font-size: var(--fs-md);
+    color: var(--c-mist);
+  }
+
+  .list {
+    display: grid;
+    gap: 16svh;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .spread {
+    display: grid;
+    gap: 2rem;
+  }
+
+  /* 5:6 shirt on a navy plinth: giant outlined number behind, red sash across. */
+  .stage {
+    position: relative;
+    isolation: isolate;
+    display: block;
+    aspect-ratio: 5 / 6;
+    overflow: clip;
+    background: radial-gradient(75% 60% at 50% 42%, #164473 0%, #0a2742 55%, #061a2c 100%);
+    box-shadow: inset 0 0 0 1px rgb(185 200 213 / 0.12);
+  }
+
+  .bignum {
+    position: absolute;
+    z-index: -1;
+    inset-block-start: -0.1em;
+    inset-inline-start: -0.02em;
+    font-family: var(--font-display);
+    font-size: min(70vw, 34rem);
+    font-weight: 900;
+    font-stretch: 125%;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgb(250 250 250 / 0.22);
+  }
+
+  .sash {
+    position: absolute;
+    z-index: -1;
+    inset-block: -25%;
+    inset-inline-start: 42%;
+    inline-size: 22%;
+    background: var(--c-red);
+    transform: skewX(-22deg);
+  }
+
+  .visual {
+    position: absolute;
+    inset: 9%;
+    filter: drop-shadow(0 1.5rem 1.5rem rgb(0 0 0 / 0.45));
+    /* Hover uses the individual transform properties so it composes with the scroll-driven `transform`. */
+    transition:
+      translate var(--dur-slow) var(--ease-out),
+      rotate var(--dur-slow) var(--ease-out),
+      scale var(--dur-slow) var(--ease-out);
+  }
+
+  .signed {
+    position: absolute;
+    inset-block-end: 1rem;
+    inset-inline-end: 1rem;
+    padding: 0.3rem 0.55rem 0.25rem;
+    background: var(--c-white);
+    color: var(--c-red);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .copy {
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: 1.25rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.9rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-mist);
+  }
+
+  .post {
+    color: var(--c-gold);
+  }
+
+  .name {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    align-items: end;
+    column-gap: 0.2em;
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 900;
+    line-height: 0.85;
+    text-transform: uppercase;
+  }
+
+  .first {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    line-height: 1.6;
+    color: var(--c-mist);
+  }
+
+  .last {
+    font-size: var(--fs-xl);
+    font-stretch: 75%;
+    overflow-wrap: anywhere;
+  }
+
+  .num {
+    font-size: var(--fs-xl);
+    font-stretch: 125%;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--c-red);
+  }
+
+  .quote {
+    position: relative;
+    margin: 0;
+    padding-inline-start: 1.1rem;
+    border-inline-start: 4px solid var(--c-red);
+
+    & p {
+      margin: 0;
+      max-inline-size: 34ch;
+      font-size: var(--fs-lg);
+      font-weight: 500;
+      font-stretch: 92%;
+      line-height: 1.22;
+      text-wrap: pretty;
+
+      &::before {
+        content: '„';
+      }
+
+      &::after {
+        content: '”';
+      }
+    }
+  }
+
+  .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.1rem 0.8rem;
+    background: var(--c-red);
+    color: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast);
+
+    & svg {
+      inline-size: 1.6rem;
+      transition: transform var(--dur) var(--ease-out);
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: var(--c-white);
+      color: var(--c-red);
+
+      & svg {
+        transform: translateX(0.35rem);
+      }
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .spread:has(a:hover) .visual {
+      translate: 0 -3%;
+      rotate: -3deg;
+      scale: 1.04;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .spread {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-items: center;
+      gap: 0 2rem;
+    }
+
+    .stage {
+      grid-column: 1 / span 6;
+      grid-row: 1;
+      justify-self: center;
+      inline-size: min(100%, 70svh);
+    }
+
+    .copy {
+      grid-column: 8 / span 5;
+      grid-row: 1;
+    }
+
+    .item:nth-child(even) {
+      .stage {
+        grid-column: 7 / span 6;
+      }
+
+      .copy {
+        grid-column: 1 / span 5;
+        justify-items: end;
+        text-align: end;
+      }
+
+      .name {
+        justify-content: end;
+      }
+
+      .meta {
+        justify-content: flex-end;
+      }
+
+      .quote {
+        padding-inline: 0 1.1rem;
+        border-inline-start: 0;
+        border-inline-end: 4px solid var(--c-red);
+      }
+
+      .sash {
+        transform: skewX(22deg);
+      }
+    }
+
+    .bignum {
+      font-size: min(40vw, 38rem);
+    }
+  }
+
+  @keyframes plinth {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+  }
+
+  @keyframes plinth-rev {
+    from {
+      clip-path: inset(0 0 0 100%);
+    }
+  }
+
+  @keyframes lift {
+    from {
+      opacity: 0;
+      transform: translateY(18%) rotate(-6deg) scale(0.9);
+    }
+  }
+
+  @keyframes slide {
+    from {
+      translate: -18% 0;
+    }
+    to {
+      translate: 8% 0;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      translate: 0 2.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .stage {
+        animation: plinth linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 40%;
+      }
+
+      .item:nth-child(even) .stage {
+        animation-name: plinth-rev;
+      }
+
+      .visual {
+        animation: lift linear both;
+        animation-timeline: view();
+        animation-range: entry 20% cover 45%;
+      }
+
+      .bignum {
+        animation: slide linear both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+      }
+
+      .copy > * {
+        animation: rise linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 35%;
+      }
+    }
+
+    @supports not (animation-timeline: view()) {
+      @media (scripting: enabled) {
+        .spread:not(.is-in) {
+          .stage {
+            clip-path: inset(0 100% 0 0);
+          }
+
+          .copy > * {
+            opacity: 0;
+            translate: 0 2.5rem;
+          }
+        }
+
+        .spread.is-in {
+          .stage {
+            animation: plinth 900ms var(--ease-out) both;
+          }
+
+          .visual {
+            animation: lift 1100ms var(--ease-out) 200ms both;
+          }
+
+          .copy > * {
+            animation: rise 700ms var(--ease-out) both;
+          }
+
+          .copy > :nth-child(2) {
+            animation-delay: 120ms;
+          }
+
+          .copy > :nth-child(3) {
+            animation-delay: 240ms;
+          }
+
+          .copy > :nth-child(4) {
+            animation-delay: 360ms;
+          }
+        }
+      }
+    }
+  }
+</style>

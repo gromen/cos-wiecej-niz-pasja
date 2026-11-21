@@ -1,0 +1,101 @@
+---
+/**
+ * Full-width „Zobacz całą kolekcję (86)” bar with a red sash wiping in on hover/focus.
+ * A label containing `{n}` gets the count inlined instead of the trailing „(86)”.
+ */
+interface Props {
+  label: string;
+  count: number;
+  href?: string;
+  tone?: 'white' | 'ink';
+}
+
+const { label, count, href = '/kolekcja/', tone = 'white' } = Astro.props;
+const inline = label.includes('{n}');
+---
+
+<div class="cta" data-tone={tone}>
+  <a href={href}>
+    <span class="label">{inline ? label.replaceAll('{n}', String(count)) : label}</span>
+    {!inline && <span class="count">({count})</span>}
+    <svg viewBox="0 0 24 12" aria-hidden="true" focusable="false">
+      <path d="M0 6h22M17 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2"></path>
+    </svg>
+  </a>
+</div>
+
+<style>
+  .cta {
+    --fg: var(--c-red);
+    --bg: var(--c-white);
+    padding: 2rem var(--gutter) 4rem;
+    background: var(--bg);
+
+    &[data-tone='ink'] {
+      --fg: var(--c-white);
+      --bg: var(--c-ink);
+    }
+  }
+
+  a {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2em 0.5em;
+    padding: 0.55em 0.6em 0.5em;
+    border: 3px solid var(--c-red);
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 1rem + 3vw, 3.6rem);
+    font-weight: 900;
+    font-stretch: 75%;
+    line-height: 0.95;
+    text-decoration: none;
+    text-transform: uppercase;
+    overflow: clip;
+    transition: color var(--dur) var(--ease-out);
+
+    /* Red sash wiping in from the left on hover/focus. */
+    &::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset: -10% -5%;
+      background: var(--c-red);
+      transform: translateX(-102%) skewX(-18deg);
+      transition: transform var(--dur) var(--ease-out);
+    }
+
+    & svg {
+      inline-size: 1.4em;
+      margin-inline-start: auto;
+      transition: transform var(--dur) var(--ease-out);
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: var(--c-white);
+
+      &::before {
+        transform: none;
+      }
+
+      & svg {
+        transform: translateX(0.2em);
+      }
+    }
+  }
+
+  .count {
+    font-stretch: 125%;
+    color: transparent;
+    -webkit-text-stroke: 1.5px currentColor;
+  }
+
+  a:hover .count,
+  a:focus-visible .count {
+    color: var(--c-white);
+  }
+</style>

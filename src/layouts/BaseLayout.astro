@@ -1,0 +1,70 @@
+---
+import '../styles/base.css';
+import archivoWdth from '@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2?url';
+
+interface Props {
+  title: string;
+  description?: string;
+  lang?: 'pl' | 'en';
+  /** Browser UI tint – match the page's first screen (e.g. club red on Trybuna pages). */
+  themeColor?: string;
+  /**
+   * Canonical path or URL (default: the current path). Absolute URLs (canonical, og:url,
+   * og:image) are only emitted when `site` is set in astro.config – never a guessed origin.
+   * Pass `false` to omit the canonical link.
+   */
+  canonical?: string | false;
+  /** Social preview image – path (resolved against `site`) or absolute URL. */
+  ogImage?: string;
+  /** og:type (default „website”). */
+  ogType?: string;
+  /** Keep the page out of search results (links are still followed). */
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = 'Kolekcja meczowych koszulek Wisły Kraków – Coś więcej niż pasja.',
+  lang = 'pl',
+  themeColor = '#050f1a',
+  canonical,
+  ogImage,
+  ogType = 'website',
+  noindex = false,
+} = Astro.props;
+
+/** Absolute URL for a path, or the URL itself if already absolute; undefined without `site`. */
+const absolute = (value: string): string | undefined => {
+  if (/^https?:\/\//i.test(value)) return value;
+  return Astro.site ? new URL(value, Astro.site).href : undefined;
+};
+
+const canonicalUrl = canonical === false ? undefined : absolute(canonical ?? Astro.url.pathname);
+const ogImageUrl = ogImage ? absolute(ogImage) : undefined;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex,follow" />}
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    <meta property="og:locale" content={lang === 'pl' ? 'pl_PL' : 'en_GB'} />
+    <meta name="theme-color" content={themeColor} />
+    <link rel="preload" href={archivoWdth} as="font" type="font/woff2" crossorigin />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{lang === 'en' ? 'Skip to content' : 'Przejdź do treści'}</a>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,176 @@
+---
+/** Museum placard („Metryczka”): mono, gold hairlines; missing fields are simply left out. */
+import { colorLabel, kindLabel, statusLabel, type ShirtData } from '../../lib/shirts';
+import { t } from './copy';
+
+interface Props {
+  shirt: ShirtData;
+}
+
+const { shirt } = Astro.props;
+const l = t.labels;
+
+const rows: { label: string; value: string }[] = [
+  { label: l.player, value: shirt.player },
+  { label: l.number, value: String(shirt.number) },
+  shirt.season && { label: l.season, value: `${shirt.seasonApprox ? `${t.approx} ` : ''}${shirt.season}` },
+  shirt.competition && { label: l.competition, value: shirt.competition },
+  shirt.match && { label: l.match, value: shirt.match.pl },
+  shirt.kind !== 'unknown' && { label: l.kind, value: kindLabel[shirt.kind].pl },
+  { label: l.status, value: statusLabel[shirt.status].pl },
+  { label: l.color, value: colorLabel[shirt.color].pl },
+  shirt.maker && { label: l.maker, value: shirt.maker },
+  shirt.sponsor && { label: l.sponsor, value: shirt.sponsor },
+  // Drafts default to `signed: false` – that means "unknown", not "no".
+  (!shirt.draft || shirt.signed) && { label: l.signed, value: shirt.signed ? t.yes : t.no },
+].filter((row): row is { label: string; value: string } => Boolean(row));
+---
+
+<section class="placard" aria-labelledby="placard-title">
+  <h2 id="placard-title" class="kicker">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+    </svg>
+    {t.placardTitle}
+  </h2>
+
+  {shirt.igPost !== undefined && <p class="post">{t.post(shirt.igPost)}</p>}
+
+  {
+    shirt.images?.front && (
+      <p class="src">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="3" y="6" width="18" height="14" rx="2" />
+          <circle cx="12" cy="13" r="3.6" />
+        </svg>
+        {t.realPhoto}
+      </p>
+    )
+  }
+
+  <dl>
+    {
+      rows.map(({ label, value }) => (
+        <div class="row">
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))
+    }
+  </dl>
+
+  {
+    shirt.instagram && (
+      <a class="ig" href={shirt.instagram} target="_blank" rel="noopener">
+        {t.igPost}
+        <span aria-hidden="true">↗</span>
+        <span class="visually-hidden">{t.newTab}</span>
+      </a>
+    )
+  }
+</section>
+
+<style>
+  .placard {
+    --hair: rgb(210 179 101 / 0.4);
+
+    position: relative;
+    padding-block-start: 1.25rem;
+    border-block-start: 1px solid var(--c-gold);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+  }
+
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 1rem;
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+
+    & svg {
+      inline-size: 1em;
+      fill: currentColor;
+    }
+  }
+
+  .post {
+    margin: 0 0 1.25rem;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    font-stretch: 75%;
+    line-height: 0.9;
+    color: var(--c-gold);
+  }
+
+  /* „Prawdziwe zdjęcie” – the exhibit above is a real photo, not an illustration. */
+  .src {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    margin: 0 0 1.25rem;
+    padding: 0.3rem 0.6rem 0.25rem;
+    border-radius: 2px;
+    background: var(--c-white);
+    color: var(--c-ink);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.3;
+    text-transform: uppercase;
+
+    & svg {
+      inline-size: 1.15em;
+      fill: none;
+      stroke: var(--c-red);
+      stroke-width: 2.2;
+    }
+  }
+
+  dl {
+    margin: 0;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 34%) minmax(0, 1fr);
+    gap: 1rem;
+    padding-block: 0.6rem;
+    border-block-end: 1px solid var(--hair);
+  }
+
+  dt {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    padding-block-start: 0.1em;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+
+  .ig {
+    display: inline-flex;
+    gap: 0.5em;
+    margin-block-start: 1.5rem;
+    padding-block: 0.5rem;
+    color: var(--c-gold);
+    text-decoration: none;
+    border-block-end: 1px solid var(--hair);
+    transition: border-color var(--dur-fast);
+
+    &:hover {
+      border-block-end-color: currentColor;
+    }
+  }
+</style>

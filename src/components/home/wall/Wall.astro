@@ -1,0 +1,609 @@
+---
+/**
+ * „Ściana” – the whole collection on one photo, every shirt a link.
+ * Home-page section (below the fold): no intro, lazy photo, scroll-driven entrance.
+ */
+import { Picture } from 'astro:assets';
+import wallPhoto from '../../../assets/sciana-kolekcji.webp';
+import { wallRows } from '../../../data/collection';
+import { getShirts, shirtHref } from '../../../lib/shirts';
+import { copy } from './copy';
+import { buildHotspots, pct } from './geometry';
+
+const hotspots = buildHotspots(await getShirts());
+const total = hotspots.length;
+const described = hotspots.filter((h) => !h.entry.data.draft).length;
+const rows = wallRows.length;
+
+// Unique per render, so the section could appear twice without id clashes.
+const uid = `wall-${Math.random().toString(36).slice(2, 8)}`;
+const ids = { title: `${uid}-title`, keys: `${uid}-keys` };
+
+const sash = copy.sash(total, rows);
+const sashRepeats = Array.from({ length: 4 }, (_, i) => i);
+---
+
+<section class="wall-sec" aria-labelledby={ids.title} data-wall-section>
+  <div class="sash" aria-hidden="true">
+    <div class="sash-track">
+      {
+        sashRepeats.map(() =>
+          sash.map((item) => (
+            <span>
+              <svg class="sash-star" viewBox="0 0 24 24" focusable="false">
+                <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6" />
+              </svg>
+              {item}
+            </span>
+          )),
+        )
+      }
+    </div>
+  </div>
+
+  <header class="head">
+    <p class="eyebrow">
+      <svg class="star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+      </svg>
+      {copy.eyebrow}
+    </p>
+    <h2 id={ids.title} class="title">
+      <span class="title-lead">{copy.title.lead}</span>
+      <span class="title-accent">{copy.title.accent}</span>
+    </h2>
+    <div class="lede">
+      <p class="lede-main">{copy.lede(total)}</p>
+      <p class="lede-more">{copy.ledeMore}</p>
+    </div>
+  </header>
+
+  <div class="frame">
+    <div class="stage" data-stage>
+      <div class="wall">
+        <Picture
+          src={wallPhoto}
+          alt={copy.photoAlt(total, rows)}
+          formats={['avif', 'webp']}
+          fallbackFormat="webp"
+          widths={[720, 1080, 1440]}
+          sizes="(min-width: 48rem) min(100vw, 1440px), 56rem"
+          loading="lazy"
+          decoding="async"
+          pictureAttributes={{ class: 'photo' }}
+        />
+        <div class="veil" aria-hidden="true"></div>
+        <div class="spots" role="group" aria-label={copy.groupLabel} aria-describedby={ids.keys} data-spots>
+          {
+            hotspots.map((h, i) => {
+              const { player, number, season, draft } = h.entry.data;
+              return (
+                <a
+                  class="spot"
+                  href={shirtHref(h.entry.id)}
+                  tabindex={i === 0 ? 0 : -1}
+                  data-spot
+                  data-row={h.row}
+                  data-x={h.x.toFixed(2)}
+                  data-h={h.h}
+                  data-v={h.v}
+                  data-astro-prefetch="hover"
+                  style={`left:${pct(h.left)};top:${pct(h.top)};width:${pct(h.width)};height:${pct(h.height)}`}
+                >
+                  <span class="visually-hidden">{copy.linkName(player, number, draft)}</span>
+                  <span class="tag" aria-hidden="true">
+                    <span class="tag-no">{copy.tagNumber(number)}</span>
+                    <span class="tag-name">{player}</span>
+                    {draft ? (
+                      <span class="tag-meta is-draft">{copy.tagDraft}</span>
+                    ) : (
+                      season && <span class="tag-meta">{season}</span>
+                    )}
+                  </span>
+                </a>
+              );
+            })
+          }
+        </div>
+      </div>
+    </div>
+
+    <p class="hint" data-hint hidden aria-hidden="true">
+      <span class="hint-arrow">←</span>
+      {copy.pan}
+      <span class="hint-arrow">→</span>
+    </p>
+  </div>
+
+  <footer class="foot">
+    <p class="help">
+      <span class="when-touch">{copy.helpTouch}</span>
+      <span class="when-hover">{copy.helpHover}</span>
+      <span class="keys" id={ids.keys}>{copy.helpKeys}</span>
+    </p>
+    <p class="stats">{copy.stats(total, described)}</p>
+  </footer>
+</section>
+
+<script>
+  import { initWall } from './interactions';
+
+  document.querySelectorAll<HTMLElement>('[data-wall-section]').forEach((section) => initWall(section));
+</script>
+
+<style>
+  .wall-sec {
+    --motion: 1;
+    --tag-bg: rgb(5 15 26 / 0.94);
+    --spot-dim: rgb(5 15 26 / 0.68);
+
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr); /* the 56rem wall must not widen the column */
+    gap: clamp(2rem, 6svh, 3.5rem);
+    padding-block: 0 clamp(3.5rem, 10svh, 7rem);
+    background:
+      radial-gradient(120% 70% at 50% 100%, rgb(13 49 79 / 0.55), transparent 70%),
+      var(--c-ink);
+    color: var(--c-white);
+  }
+
+  /* ---------- Sash (Trybuna callback, static) ---------- */
+  .sash {
+    inline-size: calc(100% + 8rem);
+    margin-inline: -4rem;
+    margin-block: clamp(1.25rem, 4svh, 2.5rem) 0;
+    padding-block: 0.55em 0.5em;
+    rotate: -2deg;
+    background: var(--c-red);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .sash-track {
+    display: flex;
+    gap: 1.6em;
+
+    span {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 1.6em;
+    }
+  }
+
+  .sash-star {
+    flex: none;
+    inline-size: 0.9em;
+    block-size: 0.9em;
+    fill: var(--c-white);
+  }
+
+  /* ---------- Heading ---------- */
+  .head {
+    display: grid;
+    gap: 1rem;
+    inline-size: 100%;
+    max-inline-size: 90rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+
+    @media (min-width: 64rem) {
+      grid-template-columns: auto minmax(0, 26rem);
+      align-items: end;
+      justify-content: space-between;
+      column-gap: 3rem;
+    }
+  }
+
+  .eyebrow {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  .star {
+    inline-size: 0.95rem;
+    block-size: 0.95rem;
+    fill: var(--c-red-bright);
+  }
+
+  .title {
+    display: grid;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(3.4rem, 1.4rem + 11vw, 10.5rem);
+    font-weight: 900;
+    font-stretch: 70%;
+    line-height: 0.84;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+
+  .title-accent {
+    color: var(--c-red-bright);
+    padding-inline-start: 0.42em;
+  }
+
+  .lede {
+    display: grid;
+    gap: 0.6rem;
+    max-inline-size: 34ch;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .lede-main {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    font-stretch: 85%;
+    line-height: 1.1;
+  }
+
+  .lede-more {
+    font-size: var(--fs-sm);
+    color: var(--fg-muted);
+  }
+
+  /* ---------- Photo frame / pannable stage ---------- */
+  .frame {
+    position: relative;
+    inline-size: 100%;
+    max-inline-size: 90rem;
+    margin-inline: auto;
+    border-block: 1px solid rgb(210 179 101 / 0.35);
+  }
+
+  .stage {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    view-timeline-name: --wall-view;
+    view-timeline-axis: block;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .wall {
+    position: relative;
+    inline-size: 56rem; /* keep in sync with the `sizes` fallback */
+    aspect-ratio: 1440 / 834;
+    overflow: clip;
+    transform-origin: 50% 60%;
+    background: var(--c-ink);
+
+    @media (min-width: 48rem) {
+      inline-size: 100%;
+    }
+  }
+
+  .photo,
+  .photo :global(img) {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .photo :global(img) {
+    object-fit: cover;
+  }
+
+  .veil {
+    position: absolute;
+    inset: 0;
+    background: var(--c-ink);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .spots {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* ---------- Hotspots ---------- */
+  .spot {
+    --on: 0;
+    --lift: 0.3rem;
+    --tx: -50%;
+
+    position: absolute;
+    z-index: calc(1 + var(--on));
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+    /* Focus is the spotlight + gold frame below, not the global ring/halo. */
+    box-shadow: none;
+    -webkit-tap-highlight-color: transparent;
+
+    /* spotlight: one huge shadow dims the rest of the photo (clipped by .wall) */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      box-shadow: 0 0 0 100vmax var(--spot-dim);
+      opacity: var(--on);
+      pointer-events: none;
+      transition: opacity calc(var(--dur-fast) * 4 / 3) var(--ease-out);
+    }
+
+    /* gold hairline frame */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border: 1px solid var(--c-gold);
+      opacity: var(--on);
+      pointer-events: none;
+      transition: opacity var(--dur-fast);
+    }
+
+    &:focus-visible,
+    &[data-active] {
+      --on: 1;
+    }
+
+    &:focus-visible::after {
+      border-width: 2px;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        --on: 1;
+      }
+    }
+  }
+
+  /* ---------- Museum label ---------- */
+  .tag {
+    position: absolute;
+    inset-block-end: calc(100% + 0.4rem);
+    inset-inline-start: 50%;
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.45rem 0.75rem 0.5rem;
+    background: var(--tag-bg);
+    border-block-start: 1px solid var(--c-gold);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    text-align: start;
+    opacity: var(--on);
+    translate: var(--tx) calc((1 - var(--on)) * var(--lift) * var(--motion));
+    pointer-events: none;
+    transition:
+      opacity var(--dur-fast),
+      translate calc(var(--dur-fast) * 1.5) var(--ease-out);
+  }
+
+  .spot[data-v='b'] {
+    --lift: -0.3rem;
+
+    .tag {
+      inset-block: calc(100% + 0.4rem) auto;
+    }
+  }
+
+  .spot[data-h='l'] {
+    --tx: 0%;
+
+    .tag {
+      inset-inline-start: 0;
+    }
+  }
+
+  .spot[data-h='r'] {
+    --tx: 0%;
+
+    .tag {
+      inset-inline: auto 0;
+    }
+  }
+
+  .tag-no {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  .tag-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    font-stretch: 85%;
+    color: var(--c-white);
+  }
+
+  .tag-meta {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+
+    &.is-draft {
+      font-style: italic;
+    }
+  }
+
+  /* ---------- Pan hint (shown by JS only when the stage overflows) ---------- */
+  .hint {
+    position: absolute;
+    inset-block-end: 1rem;
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0.45rem 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: rgb(5 15 26 / 0.78);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity var(--dur);
+
+    &[hidden] {
+      display: none;
+    }
+
+    &[data-seen] {
+      opacity: 0;
+    }
+  }
+
+  .hint-arrow {
+    color: var(--c-gold);
+  }
+
+  /* ---------- Footer: help + stats ---------- */
+  .foot {
+    display: grid;
+    gap: 0.75rem;
+    inline-size: 100%;
+    max-inline-size: 90rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
+
+    p {
+      margin: 0;
+    }
+
+    @media (min-width: 48rem) {
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 2rem;
+    }
+  }
+
+  .help {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--fg-muted);
+  }
+
+  .when-hover {
+    display: none;
+  }
+
+  @media (hover: hover) {
+    .when-touch {
+      display: none;
+    }
+
+    .when-hover {
+      display: inline;
+    }
+  }
+
+  /* Keyboard help: always the group's description; shown on screen while a shirt has keyboard focus. */
+  .keys {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .wall-sec:has(.spot:focus-visible) .keys {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    color: var(--c-gold);
+  }
+
+  .stats {
+    color: var(--c-gold);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* ---------- Motion (only when welcome) ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    .wall-sec {
+      --motion: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hint:not([data-seen]) .hint-arrow {
+      animation: wall-nudge 1.4s ease-in-out 3;
+
+      &:first-child {
+        --dir: -1;
+      }
+    }
+
+    /* Scroll-driven entrance: the photo settles and brightens as the section comes in. */
+    @supports (animation-timeline: view()) {
+      .wall {
+        animation: wall-settle linear both;
+        animation-timeline: --wall-view;
+        animation-range: entry 0% cover 45%;
+      }
+
+      .veil {
+        animation: wall-wake linear both;
+        animation-timeline: --wall-view;
+        animation-range: entry 0% cover 45%;
+      }
+    }
+  }
+
+  @keyframes wall-nudge {
+    50% {
+      translate: calc(var(--dir, 1) * 4px) 0;
+    }
+  }
+
+  @keyframes wall-settle {
+    from {
+      transform: scale(0.94);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes wall-wake {
+    from {
+      opacity: 0.72;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+</style>
