@@ -6,6 +6,12 @@ const variants = [
   { href: '/proto/b', key: 'B', name: 'Trybuna', desc: 'Kinetyczna typografia, ukośny pas, licznik 86, taśma z nazwiskami.' },
   { href: '/proto/c', key: 'C', name: 'Muzeum', desc: 'Granat, punktowe światło, jedna koszulka-eksponat z obrotem przód/tył.' },
 ];
+
+const collectionVariants = [
+  { href: '/proto/kolekcja-a/', key: 'A', name: 'Gablota', desc: 'Jasna galeria, czerwień jako akcent, koszulki-eksponaty z tabliczkami, „Sala I” i „Magazyn”.' },
+  { href: '/proto/kolekcja-b/', key: 'B', name: 'Czerwona szatnia', desc: 'Czerwień płynnie ciemnieje w bordo, koszulki w szafkach na wieszakach, pas jako wolny pasek z pauzą.' },
+  { href: '/proto/kolekcja-c/', key: 'C', name: 'Archiwum', desc: 'Dzielony hero z tablicą wyników 86, jasne karty na ciemnym tle, rejestr szkiców i przełącznik Siatka / Lista.' },
+];
 ---
 
 <BaseLayout noindex title="Prototypy hero – Coś więcej niż pasja">
@@ -14,6 +20,18 @@ const variants = [
     <h1>Coś więcej niż pasja</h1>
     <ul>
       {variants.map((v) => (
+        <li>
+          <a href={v.href}>
+            <span class="key">{v.key}</span>
+            <span class="name">{v.name}</span>
+            <span class="desc">{v.desc}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    <p class="eyebrow step">Prototypy · krok 2 – strona Kolekcja</p>
+    <ul>
+      {collectionVariants.map((v) => (
         <li>
           <a href={v.href}>
             <span class="key">{v.key}</span>
@@ -73,6 +91,10 @@ const variants = [
     color: var(--accent-2);
     text-transform: uppercase;
     letter-spacing: 0.1em;
+  }
+
+  .step {
+    margin-block: 3rem 1rem;
   }
 
   .key {

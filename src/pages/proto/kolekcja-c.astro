@@ -1,0 +1,1468 @@
+---
+/**
+ * Prototyp C – „Archiwum / tablica wyników” for /kolekcja/.
+ * Split hero (red scoreboard + featured newest shirt), a clean diagonal cut instead of the
+ * sash wipe, described shirts as large paper cards, placeholders as a dense archive register.
+ * The only script is the „Siatka / Lista” view toggle. Filters are visual only.
+ */
+import { Picture } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/site/SiteHeader.astro';
+import CollectionFooter from '../../components/collection/CollectionFooter.astro';
+import ShirtSymbols from '../../components/shirt/ShirtSymbols.astro';
+import ShirtUse from '../../components/shirt/ShirtUse.astro';
+import {
+  colorLabel,
+  firstName,
+  getShirts,
+  kindLabel,
+  lastName,
+  shirtHref,
+  shirtPalette,
+  statusLabel,
+  type ShirtEntry,
+} from '../../lib/shirts';
+
+const lang = 'pl';
+const shirts = await getShirts();
+const real = shirts.filter(({ data }) => !data.draft);
+const drafts = shirts.filter(({ data }) => data.draft);
+const [newest, ...others] = real;
+if (!newest) throw new Error('kolekcja-c: expected at least one described shirt');
+
+const total = shirts.length;
+const signedCount = shirts.filter(({ data }) => data.signed).length;
+const oldest = real
+  .filter(({ data }) => data.seasonStart !== undefined)
+  .reduce<ShirtEntry | undefined>(
+    (min, shirt) => (!min || (shirt.data.seasonStart ?? 0) < (min.data.seasonStart ?? 0) ? shirt : min),
+    undefined,
+  );
+
+const pad = (n: number, len = 2): string => String(n).padStart(len, '0');
+const isUnknown = (player: string): boolean => /^do uzupełnienia$/i.test(player.trim());
+const surnameOf = (player: string): string => (isUnknown(player) ? 'N.N.' : lastName(player));
+const wallOf = ({ data }: ShirtEntry): string => (data.wall ? `R${data.wall.row}·K${pad(data.wall.col)}` : '—');
+
+const digits = String(total).split('');
+const stats = [
+  { label: 'Opisane', value: pad(real.length) },
+  { label: 'Do opisania', value: pad(drafts.length) },
+  { label: 'Najstarsza', value: oldest?.data.season ?? '—', note: oldest ? lastName(oldest.data.player) : '' },
+  { label: 'Z autografem', value: pad(signedCount), star: true },
+];
+
+const eras = ['2020+', '2010–2019', '2000–2009', 'do 1999'];
+const cardWidths = [320, 480, 640, 960];
+const cardSizes = '(min-width: 80rem) 30vw, (min-width: 40rem) 46vw, 92vw';
+const heroWidths = [480, 720, 960];
+const heroSizes = '(min-width: 64rem) 40vw, 86vw';
+---
+
+<BaseLayout
+  noindex
+  lang={lang}
+  title="Prototyp C – Archiwum · Kolekcja · Coś więcej niż pasja"
+  description="Prototyp widoku kolekcji: tablica wyników, kolekcja jako archiwum."
+  themeColor="#c6102e"
+>
+  <p class="kc-proto" aria-hidden="true">Prototyp C – Archiwum</p>
+
+  <ShirtSymbols />
+
+  <div class="kc-cut">
+    <div class="kc-stage">
+      <SiteHeader tone="red" current="kolekcja" />
+
+      <header class="kc-hero" aria-labelledby="kc-title">
+        <div class="kc-score">
+          <p class="kc-eyebrow">Wisła Kraków · meczowe koszulki</p>
+          <h1 id="kc-title" class="kc-title">Kolekcja</h1>
+
+          <p class="kc-board">
+            <span class="visually-hidden">{total} koszulek w kolekcji</span>
+            <span class="kc-board__digits" aria-hidden="true">
+              {digits.map((digit, i) => <span class="kc-digit" style={`--i:${i}`}>{digit}</span>)}
+            </span>
+            <span class="kc-board__label" aria-hidden="true">koszulek<br />w archiwum</span>
+          </p>
+
+          <dl class="kc-stats">
+            {
+              stats.map((stat) => (
+                <div class="kc-stat">
+                  <dt>{stat.label}</dt>
+                  <dd>
+                    {stat.star && <span aria-hidden="true">★ </span>}
+                    {stat.value}
+                    {stat.note && <small> · {stat.note}</small>}
+                  </dd>
+                </div>
+              ))
+            }
+          </dl>
+        </div>
+
+        <figure class="kc-feature">
+          <a class="kc-feature__link" href={shirtHref(newest.id, lang)}>
+            <span class="kc-feature__ghost" aria-hidden="true">{newest.data.number}</span>
+            {
+              newest.data.images?.front && (
+                <Picture
+                  class="kc-feature__img"
+                  src={newest.data.images.front}
+                  alt={`Koszulka meczowa: ${newest.data.player}, numer ${newest.data.number}`}
+                  widths={heroWidths}
+                  sizes={heroSizes}
+                  formats={['avif']}
+                  fallbackFormat="webp"
+                  loading="eager"
+                  fetchpriority="high"
+                  decoding="async"
+                />
+              )
+            }
+          </a>
+          <figcaption class="kc-placard">
+            <span class="kc-tag">Najnowsza{newest.data.igPost ? ` · #${newest.data.igPost}` : ''}</span>
+            <strong class="kc-placard__name">
+              {newest.data.player} <span class="kc-placard__no">{newest.data.number}</span>
+            </strong>
+            <span class="kc-placard__meta">
+              {[newest.data.season, newest.data.competition ?? kindLabel[newest.data.kind][lang]].filter(Boolean).join(' · ')}
+            </span>
+          </figcaption>
+        </figure>
+      </header>
+    </div>
+  </div>
+
+  <main id="main" class="kc-main">
+    <div class="kc-bar">
+      <search class="kc-bar__inner" aria-label="Filtrowanie kolekcji (prototyp)">
+        <form class="kc-bar__form" autocomplete="off" aria-describedby="kc-bar-note">
+          <p id="kc-bar-note" class="visually-hidden">Prototyp: filtry są tylko poglądowe i nie zmieniają listy.</p>
+          <label class="kc-search">
+            <span class="visually-hidden">Szukaj zawodnika</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="10.5" cy="10.5" r="6.5"></circle>
+              <path d="M15.5 15.5 21 21"></path>
+            </svg>
+            <input type="search" name="q" placeholder="Zawodnik lub numer…" spellcheck="false" />
+          </label>
+
+          <fieldset class="kc-chips">
+            <legend class="visually-hidden">Epoka</legend>
+            {
+              eras.map((era) => (
+                <label class="kc-chip">
+                  <input type="checkbox" name="era" value={era} />
+                  <span>{era}</span>
+                </label>
+              ))
+            }
+            <label class="kc-chip">
+              <input type="checkbox" name="signed" value="1" />
+              <span>★ Autograf</span>
+            </label>
+          </fieldset>
+
+          <p class="kc-count" aria-hidden="true"><b>{total}</b>/{total}</p>
+
+          <div class="kc-view" role="group" aria-label="Widok" data-kc-view hidden>
+            <button type="button" aria-pressed="true" data-view="grid">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect>
+                <rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect>
+              </svg>
+              <span>Siatka</span>
+            </button>
+            <button type="button" aria-pressed="false" data-view="list">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+              <span>Lista</span>
+            </button>
+          </div>
+        </form>
+      </search>
+    </div>
+
+    <div class="kc-results" data-kc-results data-view="grid">
+      <section class="kc-section" aria-labelledby="kc-real">
+        <div class="kc-section__head">
+          <h2 id="kc-real" class="kc-section__title">Opisane</h2>
+          <p class="kc-section__count"><span class="visually-hidden">Liczba: </span>{pad(real.length)}</p>
+          <p class="kc-section__lead">Z historią z szatni albo z trybun. Zdjęcia prawdziwych koszulek.</p>
+        </div>
+
+        <ol class="kc-cards" role="list">
+          {
+            [newest, ...others].map((shirt, i) => {
+              const { data } = shirt;
+              return (
+                <li class="kc-card" style={`--i:${i}`}>
+                  <a class="kc-card__link" href={shirtHref(shirt.id, lang)}>
+                    <div class="kc-card__plate">
+                      <span class="kc-card__ghost" aria-hidden="true">{data.number}</span>
+                      {data.images?.front && (
+                        <Picture
+                          src={data.images.front}
+                          alt=""
+                          widths={cardWidths}
+                          sizes={cardSizes}
+                          formats={['avif']}
+                          fallbackFormat="webp"
+                          loading={i < 2 ? 'eager' : 'lazy'}
+                          decoding="async"
+                        />
+                      )}
+                      {data.signed && (
+                        <span class="kc-card__star" title="Z autografem">
+                          ★<span class="visually-hidden"> z autografem</span>
+                        </span>
+                      )}
+                    </div>
+                    <div class="kc-card__body">
+                      <p class="kc-card__idx" aria-hidden="true">
+                        {data.igPost ? `#${data.igPost}` : pad(i + 1, 3)}
+                      </p>
+                      <h3 class="kc-card__name">
+                        <span class="kc-card__first">{firstName(data.player)}</span>
+                        <span class="kc-card__last">{lastName(data.player)}</span>
+                      </h3>
+                      <p class="kc-card__no">
+                        <span class="visually-hidden">numer </span>
+                        {data.number}
+                      </p>
+                      <p class="kc-card__meta">
+                        <span>{data.season ?? 'sezon ?'}</span>
+                        <span>{data.competition ?? kindLabel[data.kind][lang]}</span>
+                        <span class="kc-card__status">{statusLabel[data.status][lang]}</span>
+                      </p>
+                    </div>
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ol>
+      </section>
+
+      <section class="kc-section kc-section--register" aria-labelledby="kc-register">
+        <div class="kc-section__head">
+          <h2 id="kc-register" class="kc-section__title">Rejestr</h2>
+          <p class="kc-section__count"><span class="visually-hidden">Liczba: </span>{pad(drafts.length)}</p>
+          <p class="kc-section__lead">Czekają na opis – na razie znamy kolor, numer i miejsce na ścianie.</p>
+        </div>
+
+        <div class="kc-reg-head" aria-hidden="true">
+          <span>Lp.</span><span>Nr</span><span>Zawodnik</span><span>Kolor</span><span>Ściana</span><span>Status</span>
+        </div>
+
+        <ol class="kc-register" role="list">
+          {
+            drafts.map((shirt, i) => {
+              const { data } = shirt;
+              const palette = shirtPalette[data.color];
+              const surname = surnameOf(data.player);
+              return (
+                <li class="kc-entry">
+                  <a class="kc-entry__link" href={shirtHref(shirt.id, lang)}>
+                    <span class="kc-entry__thumb" aria-hidden="true">
+                      <ShirtUse color={palette.body} trim={palette.trim} />
+                    </span>
+                    <span class="kc-entry__lp">
+                      <span class="visually-hidden">Lp. </span>
+                      {pad(real.length + i + 1, 3)}
+                    </span>
+                    <span class="kc-entry__no">
+                      <span class="visually-hidden">, numer </span>
+                      {data.number}
+                    </span>
+                    <span class="kc-entry__name">
+                      <span class="visually-hidden">, </span>
+                      {surname}
+                    </span>
+                    <span class="kc-entry__color">
+                      <span class="kc-swatch" style={`--sw:${palette.body}`} aria-hidden="true" />
+                      <span class="visually-hidden">, koszulka </span>
+                      {colorLabel[data.color][lang]}
+                    </span>
+                    <span class="kc-entry__wall">
+                      <span class="visually-hidden">, miejsce na ścianie </span>
+                      {wallOf(shirt)}
+                    </span>
+                    <span class="kc-entry__status">
+                      <span class="visually-hidden">, </span>do opisu
+                    </span>
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ol>
+      </section>
+    </div>
+  </main>
+
+  <CollectionFooter
+    strings={{
+      disclaimer: 'Nieoficjalna strona kolekcjonerska – nie jest powiązana z TS Wisła Kraków SA.',
+      instagram: 'Instagram',
+      newTab: '(otwiera się w nowej karcie)',
+    }}
+  />
+</BaseLayout>
+
+<script>
+  const group = document.querySelector<HTMLElement>('[data-kc-view]');
+  const results = document.querySelector<HTMLElement>('[data-kc-results]');
+
+  if (group && results) {
+    const buttons = [...group.querySelectorAll<HTMLButtonElement>('button[data-view]')];
+    const apply = (view: string) => {
+      results.dataset.view = view;
+      buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+    };
+
+    try {
+      const saved = localStorage.getItem('kc-view');
+      if (saved === 'grid' || saved === 'list') apply(saved);
+    } catch {
+      /* storage blocked – keep the default view */
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const view = button.dataset.view ?? 'grid';
+        apply(view);
+        try {
+          localStorage.setItem('kc-view', view);
+        } catch {
+          /* ignore */
+        }
+      });
+    });
+
+    group.hidden = false;
+  }
+</script>
+
+<style>
+  /* Local tokens: paper surface for cards, ink text on it. */
+  :global(:root) {
+    --kc-paper: #eef0ee;
+    --kc-paper-2: #dfe5ea;
+    --kc-ink-soft: #3a4b5a;
+    --kc-cut: clamp(2rem, 7vw, 6.5rem);
+    --kc-split: 44%;
+  }
+
+  /* ——— Prototype label ——— */
+  .kc-proto {
+    position: fixed;
+    z-index: 200;
+    inset-block-start: 0;
+    inset-inline-start: 50%;
+    margin: 0;
+    padding: 0.15rem 0.6rem 0.2rem;
+    border-radius: 0 0 0.35rem 0.35rem;
+    background: var(--c-gold);
+    color: var(--c-ink);
+    font: 700 0.6rem/1.2 var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    translate: -50% 0;
+    pointer-events: none;
+  }
+
+  /* ——— Hero: clipped stage on a white wrap = a static diagonal hairline sash ——— */
+  .kc-cut {
+    padding-block-end: 0.4rem;
+    background: var(--c-white);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--kc-cut)), 0 100%);
+  }
+
+  .kc-stage {
+    position: relative;
+    background: var(--c-red);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--kc-cut)), 0 100%);
+
+    /* Grain, same recipe as the live masthead. */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.09;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+  }
+
+  .kc-hero {
+    position: relative;
+    z-index: 1;
+    display: grid;
+  }
+
+  .kc-score {
+    display: grid;
+    align-content: start;
+    gap: 1.1rem;
+    padding: 1.25rem var(--gutter) 2rem;
+  }
+
+  .kc-eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .kc-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 1.6rem + 6vw, 5.5rem);
+    font-weight: 900;
+    font-stretch: 62%;
+    line-height: 0.85;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: kc-stretch 1.2s var(--ease-out) both;
+    }
+  }
+
+  /* Scoreboard: each digit sits in its own dark cell with a split-flap seam. */
+  .kc-board {
+    display: flex;
+    align-items: end;
+    gap: 1rem;
+    margin: 0;
+  }
+
+  .kc-board__digits {
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .kc-digit {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: 0.78em;
+    padding-block: 0.06em 0.02em;
+    border-radius: 0.06em;
+    background: linear-gradient(var(--c-ink) 0 50%, #0b1a28 50%);
+    box-shadow:
+      inset 0 0 0 1px rgb(250 250 250 / 0.08),
+      0 0.08em 0.2em rgb(0 0 0 / 0.35);
+    color: var(--c-gold);
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 3rem + 18vw, 12rem);
+    font-weight: 800;
+    font-stretch: 70%;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset-inline: 0;
+      inset-block-start: 50%;
+      block-size: 2px;
+      background: var(--c-ink);
+      box-shadow: 0 1px 0 rgb(250 250 250 / 0.08);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: kc-flip 700ms calc(250ms + var(--i) * 140ms) var(--ease-out) both;
+    }
+  }
+
+  .kc-board__label {
+    padding-block-end: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.12em;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+
+  .kc-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    border-block-start: 1px solid rgb(250 250 250 / 0.35);
+  }
+
+  .kc-stat {
+    padding: 0.7rem 0.75rem 0.75rem 0;
+    border-block-end: 1px solid rgb(250 250 250 / 0.35);
+
+    &:nth-child(odd) {
+      border-inline-end: 1px solid rgb(250 250 250 / 0.35);
+    }
+
+    &:nth-child(even) {
+      padding-inline-start: 0.85rem;
+    }
+
+    dt {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    dd {
+      margin: 0.2rem 0 0;
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      font-weight: 800;
+      font-stretch: 75%;
+      line-height: 1.05;
+      font-variant-numeric: tabular-nums;
+    }
+
+    small {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  /* ——— Featured shirt ——— */
+  .kc-feature {
+    position: relative;
+    margin: 0;
+    padding: 1.5rem var(--gutter) calc(var(--kc-cut) + 1.25rem);
+    background:
+      radial-gradient(60% 55% at 50% 42%, rgb(185 200 213 / 0.28), transparent 70%),
+      var(--c-navy-deep);
+  }
+
+  .kc-feature__link {
+    position: relative;
+    display: block;
+    max-inline-size: 30rem;
+    margin-inline: auto;
+    aspect-ratio: 5 / 6;
+    color: inherit;
+    border-radius: var(--radius);
+
+    &:focus-visible {
+      outline: 2px solid var(--c-gold);
+      outline-offset: 4px;
+    }
+
+    :global(picture),
+    :global(img) {
+      position: relative;
+      display: block;
+      inline-size: 100%;
+      block-size: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 1.5rem 2rem rgb(0 0 0 / 0.45));
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      :global(img) {
+        animation: kc-rise 1.1s 200ms var(--ease-out) both;
+        transition: scale var(--dur) var(--ease-out);
+      }
+
+      &:hover :global(img) {
+        scale: 1.03;
+      }
+    }
+  }
+
+  .kc-feature__ghost {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: transparent;
+    -webkit-text-stroke: 2px rgb(185 200 213 / 0.3);
+    font-family: var(--font-display);
+    font-size: clamp(12rem, 8rem + 20vw, 26rem);
+    font-weight: 900;
+    font-stretch: 62%;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .kc-placard {
+    display: grid;
+    gap: 0.3rem;
+    max-inline-size: 30rem;
+    margin: 1rem auto 0;
+    padding-block-start: 0.9rem;
+    border-block-start: 1px solid var(--line-control);
+  }
+
+  .kc-tag {
+    justify-self: start;
+    padding: 0.2rem 0.5rem;
+    background: var(--c-gold);
+    color: var(--c-ink);
+    font: 700 0.66rem/1.3 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .kc-placard__name {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    font-stretch: 75%;
+    text-transform: uppercase;
+  }
+
+  .kc-placard__no {
+    color: var(--c-gold);
+  }
+
+  .kc-placard__meta {
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
+  }
+
+  /* ——— Sticky filter bar (visual only) ——— */
+  .kc-main {
+    display: block;
+  }
+
+  .kc-bar {
+    position: sticky;
+    z-index: 30;
+    inset-block-start: var(--hdr-offset, 0px);
+    padding: 0.5rem var(--gutter);
+    background: rgb(5 15 26 / 0.94);
+    border-block: 1px solid var(--line);
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: inset-block-start 420ms var(--ease-out);
+    }
+  }
+
+  .kc-bar__form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .kc-search {
+    position: relative;
+    min-inline-size: 0;
+
+    svg {
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 0.75rem;
+      inline-size: 1rem;
+      translate: 0 -50%;
+      fill: none;
+      stroke: var(--fg-muted);
+      stroke-width: 2;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    input {
+      inline-size: 100%;
+      block-size: 2.5rem;
+      padding: 0 0.8rem 0 2.3rem;
+      border: 1px solid var(--line-control);
+      border-radius: 999px;
+      background: rgb(250 250 250 / 0.05);
+      color: var(--fg);
+      font: 500 1rem/1 var(--font-body);
+
+      &::placeholder {
+        color: var(--fg-muted);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--c-gold);
+        outline-offset: 1px;
+      }
+    }
+  }
+
+  /* Phones: chips get their own scrolling row under search + toggle. */
+  .kc-chips {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    gap: 0.35rem;
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0 0 0.1rem;
+    border: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .kc-chip {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.25rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--line-control);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+
+    input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    &:has(:focus-visible) {
+      outline: 2px solid var(--c-gold);
+      outline-offset: 2px;
+    }
+
+    &:has(:checked) {
+      border-color: var(--c-white);
+      background: var(--c-white);
+      color: var(--c-ink);
+    }
+  }
+
+  .kc-count {
+    display: none;
+    margin: 0;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+
+    b {
+      color: var(--c-white);
+    }
+  }
+
+  .kc-view {
+    display: inline-flex;
+    padding: 0.2rem;
+    border: 1px solid var(--line-control);
+    border-radius: 999px;
+
+    &[hidden] {
+      display: none;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-block-size: 2.25rem;
+      min-inline-size: 2.5rem;
+      justify-content: center;
+      padding: 0 0.7rem;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--fg-muted);
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition:
+        background-color var(--dur-fast),
+        color var(--dur-fast);
+
+      span {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      svg {
+        inline-size: 1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+
+      &:hover {
+        color: var(--c-white);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--c-gold);
+        outline-offset: 2px;
+      }
+
+      &[aria-pressed='true'] {
+        background: var(--c-red);
+        color: var(--c-white);
+      }
+    }
+  }
+
+  /* ——— Sections ——— */
+  .kc-results {
+    padding: 2.5rem var(--gutter) 4rem;
+  }
+
+  .kc-section + .kc-section {
+    margin-block-start: 4rem;
+  }
+
+  .kc-section__head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 0.25rem 1rem;
+    margin-block-end: 1.5rem;
+    padding-block-end: 0.9rem;
+    border-block-end: 2px solid var(--c-white);
+  }
+
+  .kc-section__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 900;
+    font-stretch: 62%;
+    line-height: 0.9;
+    text-transform: uppercase;
+  }
+
+  .kc-section__count {
+    margin: 0;
+    color: var(--c-gold);
+    font-family: var(--font-mono);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kc-section__lead {
+    grid-column: 1 / -1;
+    max-inline-size: 42ch;
+    margin: 0.4rem 0 0;
+    color: var(--fg-muted);
+    font-size: var(--fs-sm);
+  }
+
+  /* ——— Real shirts: large paper cards ——— */
+  .kc-cards {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .kc-card__link {
+    display: grid;
+    block-size: 100%;
+    border-radius: var(--radius);
+    background: var(--kc-paper);
+    color: var(--c-ink);
+    text-decoration: none;
+    overflow: hidden;
+    transition: translate var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+
+    &:hover {
+      box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 0.45);
+
+      .kc-card__last {
+        color: var(--c-red);
+      }
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--c-gold);
+      outline-offset: 3px;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      &:hover {
+        translate: 0 -4px;
+
+        :global(img) {
+          scale: 1.04;
+        }
+      }
+    }
+  }
+
+  .kc-card__plate {
+    position: relative;
+    aspect-ratio: 5 / 5.4;
+    background:
+      radial-gradient(70% 60% at 50% 45%, #fff, transparent 75%),
+      linear-gradient(var(--kc-paper), var(--kc-paper-2));
+    overflow: hidden;
+
+    :global(picture),
+    :global(img) {
+      position: absolute;
+      inset: 6%;
+      inline-size: 88%;
+      block-size: 88%;
+      object-fit: contain;
+      filter: drop-shadow(0 0.75rem 1rem rgb(5 15 26 / 0.25));
+      transition: scale var(--dur) var(--ease-out);
+    }
+  }
+
+  .kc-card__ghost {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgb(13 49 79 / 0.07);
+    font-family: var(--font-display);
+    font-size: clamp(10rem, 6rem + 14vw, 16rem);
+    font-weight: 900;
+    font-stretch: 62%;
+    line-height: 1;
+  }
+
+  .kc-card__star {
+    position: absolute;
+    inset-block-start: 0.75rem;
+    inset-inline-end: 0.75rem;
+    display: grid;
+    place-items: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: 50%;
+    background: var(--c-ink);
+    color: var(--c-gold);
+    font-size: 0.95rem;
+  }
+
+  .kc-card__body {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 0.15rem 0.75rem;
+    padding: 0.9rem 1rem 1rem;
+    border-block-start: 1px solid rgb(13 49 79 / 0.15);
+  }
+
+  .kc-card__idx {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--kc-ink-soft);
+    font: 500 0.68rem/1 var(--font-mono);
+    letter-spacing: 0.12em;
+  }
+
+  .kc-card__name {
+    display: grid;
+    margin: 0;
+    font-family: var(--font-display);
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  .kc-card__first {
+    color: var(--kc-ink-soft);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+
+  .kc-card__last {
+    font-size: var(--fs-lg);
+    font-weight: 900;
+    font-stretch: 70%;
+    transition: color var(--dur-fast);
+  }
+
+  .kc-card__no {
+    margin: 0;
+    color: var(--c-red);
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 900;
+    font-stretch: 70%;
+    line-height: 0.95;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kc-card__meta {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    margin: 0.5rem 0 0;
+    color: var(--kc-ink-soft);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  .kc-card__status {
+    color: var(--c-navy);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  /* ——— Register (drafts) ——— */
+  .kc-reg-head {
+    display: none;
+  }
+
+  .kc-register {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+    list-style: none;
+  }
+
+  .kc-entry__link {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.1rem 0.35rem;
+    block-size: 100%;
+    padding: 0.5rem 0.55rem 0.6rem;
+    background: var(--c-ink);
+    color: var(--fg);
+    text-decoration: none;
+    transition: background-color var(--dur-fast);
+
+    &:hover {
+      background: var(--c-navy-deep);
+
+      .kc-entry__name {
+        color: var(--c-white);
+      }
+    }
+
+    &:focus-visible {
+      z-index: 1;
+      outline: 2px solid var(--c-gold);
+      outline-offset: -2px;
+    }
+  }
+
+  .kc-entry__thumb {
+    grid-column: 1 / -1;
+    order: 1;
+    display: block;
+    aspect-ratio: 1;
+    margin-block: 0.2rem 0.3rem;
+    padding: 8%;
+
+    :global(svg) {
+      inline-size: 100%;
+      block-size: 100%;
+    }
+  }
+
+  .kc-entry__lp {
+    color: var(--fg-muted);
+    font: 500 0.62rem/1 var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+
+  .kc-entry__no {
+    color: var(--c-gold);
+    font: 700 0.72rem/1 var(--font-mono);
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kc-entry__name {
+    grid-column: 1 / -1;
+    order: 2;
+    overflow: hidden;
+    color: var(--fg-muted);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: 800;
+    font-stretch: 75%;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: color var(--dur-fast);
+  }
+
+  .kc-entry__color,
+  .kc-entry__wall,
+  .kc-entry__status {
+    display: none;
+  }
+
+  .kc-swatch {
+    display: inline-block;
+    inline-size: 0.7rem;
+    block-size: 0.7rem;
+    border-radius: 50%;
+    background: var(--sw);
+    box-shadow: inset 0 0 0 1px rgb(250 250 250 / 0.5);
+    vertical-align: -0.05rem;
+  }
+
+  /* ——— List view ——— */
+  .kc-results[data-view='list'] {
+    .kc-cards {
+      gap: 0;
+      border-block-start: 1px solid var(--line);
+    }
+
+    .kc-card__link {
+      grid-template-columns: 5.5rem minmax(0, 1fr);
+      border-radius: 0;
+      border-block-end: 1px solid var(--line);
+      background: transparent;
+      color: var(--fg);
+
+      &:hover {
+        translate: none;
+        box-shadow: none;
+        background: rgb(250 250 250 / 0.04);
+      }
+    }
+
+    .kc-card__plate {
+      aspect-ratio: 1;
+      margin: 0.5rem 0;
+      border-radius: var(--radius);
+    }
+
+    .kc-card__ghost,
+    .kc-card__star {
+      display: none;
+    }
+
+    .kc-card__body {
+      align-content: center;
+      border: 0;
+    }
+
+    .kc-card__idx,
+    .kc-card__first,
+    .kc-card__meta {
+      color: var(--fg-muted);
+    }
+
+    .kc-card__status {
+      color: var(--c-white);
+    }
+
+    .kc-card__no {
+      color: var(--c-gold);
+    }
+
+    .kc-register {
+      grid-template-columns: 1fr;
+      gap: 0;
+      border-inline: 0;
+      background: none;
+    }
+
+    .kc-entry__link {
+      grid-template-columns: 3rem 2.5rem minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.55rem 0.25rem;
+      border-block-end: 1px solid var(--line);
+      font-size: var(--fs-sm);
+    }
+
+    .kc-entry__thumb {
+      display: none;
+    }
+
+    .kc-entry__lp,
+    .kc-entry__no {
+      font-size: var(--fs-xs);
+      text-align: start;
+    }
+
+    .kc-entry__name {
+      grid-column: auto;
+      order: 0;
+      color: var(--fg);
+    }
+
+    .kc-entry__color {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--fg-muted);
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+    }
+  }
+
+  /* ——— ≥40rem ——— */
+  @media (min-width: 40rem) {
+    .kc-stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .kc-stat {
+      padding-inline: 0.85rem;
+      border-inline-end: 1px solid rgb(250 250 250 / 0.35);
+
+      &:first-child {
+        padding-inline-start: 0;
+      }
+
+      &:last-child {
+        border-inline-end: 0;
+      }
+    }
+
+    .kc-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* Rhythm: the newest shirt spans two columns as a wide lead card. */
+    .kc-results[data-view='grid'] .kc-card:first-child {
+      grid-column: 1 / -1;
+
+      .kc-card__link {
+        grid-template-columns: 1.2fr 1fr;
+      }
+
+      .kc-card__plate {
+        aspect-ratio: 5 / 4.6;
+      }
+
+      .kc-card__body {
+        align-content: end;
+        padding: 1.5rem;
+        border-block-start: 0;
+        border-inline-start: 1px solid rgb(13 49 79 / 0.15);
+      }
+
+      .kc-card__last,
+      .kc-card__no {
+        font-size: var(--fs-xl);
+      }
+    }
+
+    .kc-results[data-view='list'] {
+      .kc-card__link {
+        grid-template-columns: 6.5rem minmax(0, 1fr);
+      }
+
+      .kc-card__body {
+        grid-template-columns: 4rem minmax(0, 1fr) auto;
+        gap: 1rem;
+        padding-inline: 1.25rem 0.5rem;
+      }
+
+      .kc-card__idx {
+        grid-column: auto;
+      }
+
+      .kc-card__meta {
+        grid-column: 2 / -1;
+        margin: 0;
+      }
+
+      .kc-reg-head {
+        display: grid;
+      }
+
+      .kc-reg-head,
+      .kc-entry__link {
+        grid-template-columns: 3.5rem 3rem minmax(0, 1.6fr) minmax(0, 1fr) 5.5rem 6rem;
+      }
+
+      .kc-entry__wall,
+      .kc-entry__status {
+        display: block;
+        color: var(--fg-muted);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+      }
+
+      .kc-entry__status {
+        color: var(--c-gold);
+      }
+    }
+
+    .kc-reg-head {
+      gap: 0.75rem;
+      padding: 0 0.25rem 0.5rem;
+      border-block-end: 1px solid var(--line-control);
+      color: var(--fg-muted);
+      font: 500 0.66rem/1 var(--font-mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+  }
+
+  /* ——— ≥48rem: one-row bar ——— */
+  @media (min-width: 48rem) {
+    .kc-bar {
+      background: rgb(5 15 26 / 0.86);
+      backdrop-filter: blur(14px) saturate(1.3);
+    }
+
+    .kc-bar__form {
+      grid-template-columns: minmax(0, 20rem) minmax(0, 1fr) auto auto;
+      gap: 0.85rem;
+    }
+
+    .kc-chips {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .kc-count {
+      display: block;
+    }
+
+    .kc-view button span {
+      position: static;
+      inline-size: auto;
+      block-size: auto;
+      clip-path: none;
+    }
+  }
+
+  /* ——— ≥64rem: split hero ——— */
+  @media (min-width: 64rem) {
+    .kc-stage {
+      background: linear-gradient(90deg, var(--c-red) 0 var(--kc-split), var(--c-navy-deep) var(--kc-split));
+    }
+
+    .kc-hero {
+      grid-template-columns: var(--kc-split) 1fr;
+      min-block-size: min(46rem, calc(100svh - var(--hdr-space)));
+    }
+
+    .kc-score {
+      align-content: center;
+      gap: 1.5rem;
+      padding: 2rem 3rem calc(var(--kc-cut) + 2rem) var(--gutter);
+    }
+
+    .kc-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kc-stat {
+      padding-inline: 0 0.75rem;
+      border-inline-end: 0;
+
+      &:nth-child(odd) {
+        border-inline-end: 1px solid rgb(250 250 250 / 0.35);
+      }
+
+      &:nth-child(even) {
+        padding-inline-start: 0.85rem;
+      }
+    }
+
+    .kc-feature {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 14rem;
+      align-items: end;
+      gap: 2rem;
+      padding: 1rem var(--gutter) calc(var(--kc-cut) + 1.5rem) 2rem;
+      background: radial-gradient(55% 60% at 40% 45%, rgb(185 200 213 / 0.26), transparent 70%);
+    }
+
+    .kc-feature__link {
+      max-inline-size: 34rem;
+      inline-size: 100%;
+    }
+
+    .kc-placard {
+      margin: 0 0 2rem;
+    }
+
+    .kc-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .kc-register {
+      grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    }
+
+    .kc-results[data-view='list'] .kc-register {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 2.5rem;
+    }
+
+    .kc-results[data-view='list'] .kc-reg-head {
+      display: none;
+    }
+  }
+
+  /* ——— Motion (opt-in) ——— */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .kc-card,
+      .kc-entry {
+        animation: kc-in linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 60%;
+      }
+    }
+  }
+
+  @keyframes kc-stretch {
+    from {
+      font-stretch: 125%;
+      letter-spacing: 0.04em;
+      opacity: 0;
+    }
+  }
+
+  @keyframes kc-flip {
+    from {
+      transform: perspective(400px) rotateX(-88deg);
+      transform-origin: 50% 0;
+      opacity: 0;
+    }
+  }
+
+  @keyframes kc-rise {
+    from {
+      opacity: 0;
+      translate: 0 1.5rem;
+    }
+  }
+
+  @keyframes kc-in {
+    from {
+      opacity: 0;
+      translate: 0 1.25rem;
+    }
+  }
+</style>
