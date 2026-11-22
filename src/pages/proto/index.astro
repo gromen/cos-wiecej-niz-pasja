@@ -12,6 +12,12 @@ const collectionVariants = [
   { href: '/proto/kolekcja-b/', key: 'B', name: 'Czerwona szatnia', desc: 'Czerwień płynnie ciemnieje w bordo, koszulki w szafkach na wieszakach, pas jako wolny pasek z pauzą.' },
   { href: '/proto/kolekcja-c/', key: 'C', name: 'Archiwum', desc: 'Dzielony hero z tablicą wyników 86, jasne karty na ciemnym tle, rejestr szkiców i przełącznik Siatka / Lista.' },
 ];
+
+const filterVariants = [
+  { href: '/proto/filtry-a/', key: 'A', name: 'Pasek z rozwijanymi', desc: 'Jeden rząd: wyszukiwarka, „Epoka ▾”, „Kolor ▾”… z rozwijanymi panelami, aktywne filtry jako żetony „czerwona ×”.' },
+  { href: '/proto/filtry-b/', key: 'B', name: 'Szuflada z boku', desc: 'Cienka linia: szukaj, „Filtry (n)”, sortuj. Wszystko w panelu z prawej („Kartoteka szatni”), siatka na całą szerokość.' },
+  { href: '/kolekcja/', key: 'C', name: 'Szybkie filtry (wybrane)', desc: 'Wdrożone na /kolekcja/. Biały pasek z najczęstszymi filtrami (autograf, dekady, bramkarska, kolory) + okno „Wszystkie filtry”.' },
+];
 ---
 
 <BaseLayout noindex title="Prototypy hero – Coś więcej niż pasja">
@@ -32,6 +38,18 @@ const collectionVariants = [
     <p class="eyebrow step">Prototypy · krok 2 – strona Kolekcja</p>
     <ul>
       {collectionVariants.map((v) => (
+        <li>
+          <a href={v.href}>
+            <span class="key">{v.key}</span>
+            <span class="name">{v.name}</span>
+            <span class="desc">{v.desc}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    <p class="eyebrow step">Prototypy · krok 3 – filtry kolekcji</p>
+    <ul>
+      {filterVariants.map((v) => (
         <li>
           <a href={v.href}>
             <span class="key">{v.key}</span>

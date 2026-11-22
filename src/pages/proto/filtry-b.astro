@@ -1,0 +1,257 @@
+---
+/**
+ * Prototyp filtrów B – „Szuflada z boku”: the real /kolekcja/ page with its filter block swapped
+ * for a slim bar + removable tokens + a side drawer (b-FilterDrawer). Filtering is the real
+ * runtime (collection.ts), so search, facets, counts and URL sync all work.
+ * Test page only – /kolekcja/ and its components are untouched.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/site/SiteHeader.astro';
+import CollectionMasthead from '../../components/collection/CollectionMasthead.astro';
+import FilterDrawer from '../../components/collection/proto-filters/b-FilterDrawer.astro';
+import { plural } from '../../components/collection/search';
+import CollectionResults from '../../components/collection/CollectionResults.astro';
+import CollectionFooter from '../../components/collection/CollectionFooter.astro';
+import ShirtCard from '../../components/collection/ShirtCard.astro';
+import ShirtSymbols from '../../components/shirt/ShirtSymbols.astro';
+import { buildFacets } from '../../components/collection/model';
+import type { CollectionStrings } from '../../components/collection/strings';
+import { getShirts } from '../../lib/shirts';
+
+/* ——— All copy for this page (EN version = another object of the same type) ——— */
+const t: Omit<CollectionStrings, 'quick'> = {
+  lang: 'pl',
+  meta: {
+    title: 'Filtry B – Szuflada (prototyp) | Coś więcej niż pasja',
+    description:
+      'Wszystkie koszulki z kolekcji „Coś więcej niż pasja”: meczowe koszulki Wisły Kraków. Szukaj po zawodniku, epoce, kolorze i statusie.',
+  },
+  skip: 'Przejdź do koszulek',
+  masthead: {
+    eyebrow: 'Wisła Kraków · meczowe koszulki',
+    heading: 'Kolekcja',
+    lead: 'Grane, przygotowane na mecz, podpisane. Każda wisi na swoim haku – z historią z szatni albo z trybun.',
+    tally: 'Opisane: {described} · czeka na opis: {drafts}',
+    countSuffix: 'w szatni',
+    room: 'Szatnia',
+    sash: '★ mecz po meczu ★ koszulka po koszulce ★ Biała Gwiazda ★ szatnia przy Reymonta ',
+    sashPause: 'Pauza paska',
+  },
+  filters: {
+    region: 'Filtrowanie kolekcji',
+    search: 'Szukaj zawodnika',
+    searchPlaceholder: 'Zawodnik lub numer…',
+    open: 'Filtry',
+    sheetTitle: 'Filtry',
+    close: 'Zamknij filtry',
+    reset: 'Wyczyść',
+    groups: { era: 'Epoka', kind: 'Rodzaj', color: 'Kolor', status: 'Status', options: 'Opcje' },
+    unknownEra: 'Nieznany sezon',
+    signed: 'Z autografem',
+    described: 'Tylko opisane',
+    sort: 'Sortuj',
+    sortOptions: { newest: 'Najnowsze w kolekcji', number: 'Numer na plecach', season: 'Sezon' },
+    activeCount: 'aktywne filtry',
+  },
+  card: {
+    draft: 'do uzupełnienia',
+    signed: 'autograf',
+    number: 'numer',
+    unknownSeason: 'sezon ?',
+    unknownPlayer: 'N.N.',
+    unknownPlayerFull: 'Nieznany zawodnik',
+    photo: 'Prawdziwe zdjęcie',
+    illustration: 'Ilustracja',
+    flip: 'Obróć koszulkę',
+  },
+  results: {
+    heading: 'Koszulki w kolekcji',
+    emptyTitle: 'Pusto na trybunie',
+    emptyText: 'Żadna koszulka nie pasuje do wybranych filtrów.',
+    emptyReset: 'Wyczyść filtry',
+  },
+  footer: {
+    disclaimer: 'Nieoficjalna strona kolekcjonerska – nie jest powiązana z TS Wisła Kraków SA.',
+    instagram: 'Instagram',
+    newTab: '(otwiera się w nowej karcie)',
+  },
+  client: {
+    forms: ['koszulka', 'koszulki', 'koszulek'],
+    applyForms: ['koszulkę', 'koszulki', 'koszulek'],
+    of: 'z',
+    apply: 'Pokaż {n} {forms}',
+    applyEmpty: 'Brak wyników',
+    status: 'Wyniki: {n} {forms} z {total}.',
+    statusAll: 'Wszystkie koszulki: {total}.',
+    statusEmpty: 'Brak koszulek dla wybranych filtrów.',
+  },
+};
+
+const shirts = await getShirts();
+const total = shirts.length;
+const described = shirts.filter(({ data }) => !data.draft).length;
+// Facet options come from described shirts only – placeholders (draft) have unknown
+// season/kind/status and would flood those chips; see buildFacets().
+const facets = buildFacets(shirts, t.lang, t.filters.groups, t.filters.unknownEra);
+const signedCount = shirts.filter(({ data }) => data.signed).length;
+---
+
+<BaseLayout title={t.meta.title} description={t.meta.description} lang={t.lang} themeColor="#c6102e" noindex>
+  <script is:inline slot="head">
+    // Runs before first paint: flag JS (shows the filter bar without a shift), hide the grid
+    // while a filtered view is restored from the URL, and on a cross-document transition
+    // back from a detail page let only that page's shirt keep its shared name.
+    (() => {
+      const html = document.documentElement;
+      html.dataset.js = '';
+      const params = new URLSearchParams(location.search);
+      const keys = ['q', 'era', 'kind', 'color', 'status', 'signed', 'described', 'sort'];
+      if (keys.some((key) => params.has(key))) html.dataset.restore = '';
+      addEventListener('pagereveal', (event) => {
+        const from = window.navigation?.activation?.from?.url;
+        if (!event.viewTransition || !from) return;
+        const path = new URL(from).pathname;
+        const visuals = [...document.querySelectorAll('[data-vt]')];
+        visuals.forEach((el) => {
+          if (el.closest('a')?.pathname !== path) el.style.viewTransitionName = 'none';
+        });
+        const done = () => {
+          visuals.forEach((el) => {
+            el.style.viewTransitionName = el.dataset.vt;
+          });
+        };
+        event.viewTransition.finished.then(done, done);
+      });
+    })();
+  </script>
+
+  <p class="fb-proto" role="note">Filtry B – Szuflada</p>
+
+  <a class="skip" href="#kolekcja-lista">{t.skip}</a>
+
+  <!-- Shared placeholder-shirt sprite: every card <use>s it instead of inlining a full SVG. -->
+  <ShirtSymbols />
+
+  <SiteHeader tone="red" current="kolekcja" />
+
+  <main id="main" class="collection" data-collection data-strings={JSON.stringify(t.client)}>
+    <CollectionMasthead strings={t.masthead} forms={t.client.forms} total={total} described={described} />
+
+    <div class="browse">
+      <FilterDrawer
+        strings={t.filters}
+        facets={facets}
+        total={total}
+        totalLabel={plural(total, t.client.forms)}
+        signedCount={signedCount}
+        describedCount={described}
+      />
+      <CollectionResults strings={t.results}>
+        {
+          shirts.map((shirt, i) => (
+            <ShirtCard shirt={shirt} order={i} strings={t.card} lang={t.lang} eager={false} priority={false} />
+          ))
+        }
+      </CollectionResults>
+    </div>
+  </main>
+
+  <CollectionFooter strings={t.footer} />
+</BaseLayout>
+
+<script>
+  // Order matters: the real runtime first (it restores state from the URL), then the drawer bits.
+  import '../../components/collection/collection';
+  import '../../components/collection/proto-filters/b-drawer';
+</script>
+
+<style>
+  /* Page-only: the whole document is one red room – club red deepening into claret
+     (overscroll included), with no hard break into the site's navy. */
+  :global(html:has([data-collection])) {
+    background: #4a0410;
+  }
+
+  :global(body:has([data-collection])) {
+    background: linear-gradient(
+      180deg,
+      var(--c-red) 0,
+      var(--c-red) 34rem,
+      #b00d29 60rem,
+      #8e0a20 110rem,
+      #6a0717 70%,
+      #4a0410 100%
+    );
+  }
+
+  .fb-proto {
+    position: fixed;
+    z-index: 1000;
+    inset-block-start: 0;
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    margin: 0;
+    padding: 0.2rem 0.65rem 0.18rem;
+    border-radius: 0 0 3px 3px;
+    background: var(--c-white);
+    color: var(--c-red-deep);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: 0 0.2rem 0.8rem rgb(0 0 0 / 0.25);
+    pointer-events: none;
+  }
+
+  .skip {
+    position: absolute;
+    z-index: 100;
+    inset-block-start: 0.5rem;
+    inset-inline-start: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--c-white);
+    color: var(--c-ink);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    translate: 0 -200%;
+
+    &:focus-visible {
+      translate: 0 0;
+    }
+  }
+
+  .collection {
+    /* Tokens retuned for the red room: white text only, white focus rings (gold stays decorative). */
+    --fg: var(--c-white);
+    --fg-muted: rgb(250 250 250 / 0.9);
+    --accent-2: var(--c-white);
+    --line: rgb(250 250 250 / 0.16);
+    /* Decorative edges only (outline numbers, dashed tags) – not for controls. */
+    --line-strong: rgb(250 250 250 / 0.55);
+    /* Borders of interactive controls (chips, switches, inputs, selects) – ≥3:1 on club red
+       (≈3.3:1 at 0.7) and higher on the darker reds / claret (WCAG 1.4.11). */
+    --line-control: rgb(250 250 250 / 0.7);
+
+    position: relative;
+    isolation: isolate;
+    display: block;
+    overflow-x: clip;
+    color: var(--c-white);
+
+    /* Grain over the whole room. */
+    &::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0.08;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+  }
+</style>
