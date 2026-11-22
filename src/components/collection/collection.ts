@@ -11,8 +11,8 @@
  *    afterwards every shirt gets its static name back (the detail-page morph needs it).
  *  - Photo cards keep their back in a <template>: it is cloned on first hover / focus /
  *    flip tap, and the card flips only once that image has decoded.
- *  - On phones the facet panel is moved into a <dialog> bottom sheet; changes made there
- *    are applied (with the transition) once the sheet has closed.
+ *  - On phones the facet panel is moved into a <dialog> bottom sheet (and back to its inline
+ *    rows afterwards); changes made there are applied (with the transition) once it has closed.
  */
 import { matchesTokens, plural, tokenize } from './search';
 import type { ClientStrings } from './strings';
@@ -414,8 +414,20 @@ if (root && form && grid) {
 
   /* ——— Sheet (phones) / jump to chips (desktop) ——— */
 
+  /** Moving a subtree blurs whatever was focused inside it: put focus back if it survived. */
+  const moveFacets = (target: HTMLElement): void => {
+    if (!facets || facets.parentElement === target) return;
+    const focused = document.activeElement;
+    target.append(facets);
+    if (focused instanceof HTMLElement && focused !== document.activeElement && focused.isConnected && facets.contains(focused)) {
+      focused.focus({ preventScroll: true });
+    }
+  };
+
   const homeFacets = (): void => {
-    if (facets && facetsHome && facets.parentElement !== facetsHome) facetsHome.append(facets);
+    if (facetsHome) moveFacets(facetsHome);
+    // Release the height held while the chips were in the sheet.
+    facetsHome?.style.removeProperty('min-block-size');
   };
 
   const syncOpenButton = (): void => {
@@ -455,7 +467,12 @@ if (root && form && grid) {
       return;
     }
     if (!sheet || !sheetBody || !facets) return;
-    if (facets.parentElement !== sheetBody) sheetBody.append(facets);
+    if (facets.parentElement !== sheetBody) {
+      // The chip rows are also shown inline on phones: hold their height while they live in
+      // the sheet, so nothing below them jumps (and the scroll position stays put).
+      if (facetsHome) facetsHome.style.minBlockSize = `${facetsHome.offsetHeight}px`;
+      moveFacets(sheetBody);
+    }
     sheet.showModal();
   });
 
@@ -468,13 +485,21 @@ if (root && form && grid) {
     if (event.target === sheet) sheet.close();
   });
 
+  const SHEET_SETTLE = 450; // ms – never wait longer for the slide-out to report finished
+
   sheet?.addEventListener('close', () => {
-    if (!pending) return;
-    // Let the sheet slide away first – a transition starting under it would freeze it mid-air.
+    // Phones: return focus to „Filtry” explicitly (WebKit does not always restore it).
+    if (!desktop.matches) openButton?.focus({ preventScroll: true });
+    // Let the sheet slide away first – emptying it (or a transition starting under it)
+    // would freeze it mid-air. Then the chips go back to their inline rows.
     requestAnimationFrame(() => {
-      Promise.allSettled(sheet.getAnimations({ subtree: true }).map((animation) => animation.finished)).then(() =>
-        apply({ animate: true }),
-      );
+      const finished = Promise.allSettled(sheet.getAnimations({ subtree: true }).map((animation) => animation.finished));
+      const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, SHEET_SETTLE));
+      Promise.race([finished, timeout]).then(() => {
+        if (sheet.open) return;
+        homeFacets();
+        if (pending) apply({ animate: true });
+      });
     });
   });
 
@@ -507,8 +532,9 @@ if (root && form && grid) {
     html.dataset.leaving = '';
     // Still on this page a while later → the navigation was aborted (stop, error, new tab…).
     // Timers are frozen while the page sits in bfcache, so this never fires during the swap.
+    // Only needed without `pageswap` – with it, `pageshow` handles the bfcache return.
     window.clearTimeout(staleTimer);
-    staleTimer = window.setTimeout(resetLeaving, 4000);
+    if (!('pageswap' in window)) staleTimer = window.setTimeout(resetLeaving, 4000);
   };
 
   // Browsers without `pageswap` (but with cross-document transitions) – name the clicked card
@@ -592,6 +618,18 @@ if (root && form && grid) {
     const flipped = button.getAttribute('aria-pressed') !== 'true';
     button.setAttribute('aria-pressed', String(flipped));
     card.toggleAttribute('data-flipped', flipped);
+  });
+
+  /* ——— Chip rows on phones: fade the right edge while more chips hide off-screen ——— */
+
+  const rows = [...root.querySelectorAll<HTMLElement>('.chips, .options')];
+  const markMore = (row: HTMLElement): void => {
+    row.toggleAttribute('data-more', row.scrollWidth - row.clientWidth - row.scrollLeft > 1);
+  };
+  const rowObserver = new ResizeObserver((entries) => entries.forEach((entry) => markMore(entry.target as HTMLElement)));
+  rows.forEach((row) => {
+    rowObserver.observe(row);
+    row.addEventListener('scroll', () => markMore(row), { passive: true });
   });
 
   /* ——— Init: restore from the URL ——— */

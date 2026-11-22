@@ -1,8 +1,10 @@
 ---
 /**
- * Grid wrapper: list landmark, empty state, polite live region,
- * plus the (global) view-transition choreography used while filtering.
+ * The locker bank: list landmark, empty state, polite live region, the outline-shirt
+ * sprite the placeholder lockers <use>, plus the (global) view-transition choreography
+ * used while filtering.
  */
+import { BODY, CHEST_STAR, CUFFS, HEM, NECK_FRONT, SEAMS, VIEWBOX } from '../shirt/geometry';
 import type { CollectionStrings } from './strings';
 
 interface Props {
@@ -15,6 +17,22 @@ const { strings } = Astro.props;
 <section class="results" id="kolekcja-lista" aria-labelledby="results-title" data-results>
   <!-- tabindex=-1: focus target after „Wyczyść filtry” in the empty state. -->
   <h2 id="results-title" class="visually-hidden" tabindex="-1">{strings.heading}</h2>
+
+  <!-- Chalk-outline placeholder shirt, drawn once and <use>d by every draft locker (colour = currentColor). -->
+  <svg class="outline-sprite" aria-hidden="true" focusable="false">
+    <symbol id="shirt-sym-outline" viewBox={VIEWBOX}>
+      <g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+        <path d={BODY} stroke-width="2" vector-effect="non-scaling-stroke"></path>
+        <path d={NECK_FRONT} stroke-width="2" vector-effect="non-scaling-stroke"></path>
+        <g stroke-width="1" opacity="0.6">
+          <path d={SEAMS} vector-effect="non-scaling-stroke"></path>
+          <path d={CUFFS} vector-effect="non-scaling-stroke"></path>
+          <path d={HEM} vector-effect="non-scaling-stroke"></path>
+        </g>
+        <polygon points={CHEST_STAR} stroke-width="2" vector-effect="non-scaling-stroke"></polygon>
+      </g>
+    </symbol>
+  </svg>
   <ul class="grid" data-grid>
     <slot />
   </ul>
@@ -33,21 +51,48 @@ const { strings } = Astro.props;
 
 <style>
   .results {
-    padding: 1.5rem var(--gutter) 4rem;
+    padding: 0 var(--gutter) clamp(3rem, 8vw, 6rem);
   }
 
+  /* Not display:none – some engines then drop what a <use> references. */
+  .outline-sprite {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
+    overflow: hidden;
+  }
+
+  /* The bank of lockers: no gaps, hairline seams (each locker draws its right/bottom edge). */
   .grid {
     --cols: 2;
-    --gap: 0.75rem;
-    --body-h: 7.25rem;
+    --body-h: 7.5rem;
 
     container-type: inline-size;
     display: grid;
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-    gap: 1.75rem var(--gap);
     margin: 0;
     padding: 0;
     list-style: none;
+    border-block-start: 1px solid var(--line);
+    border-inline-start: 1px solid var(--line);
+
+    /* Nothing to frame when every locker is filtered out. */
+    &:not(:has(> :not([hidden]))) {
+      border: 0;
+    }
+
+    @media (min-width: 40rem) {
+      --cols: 3;
+    }
+
+    @media (min-width: 64rem) {
+      --cols: 4;
+      --body-h: 6rem;
+    }
+
+    @media (min-width: 96rem) {
+      --cols: 5;
+    }
   }
 
   .empty {
@@ -63,10 +108,10 @@ const { strings } = Astro.props;
 
     svg {
       inline-size: 3.5rem;
-      fill: none;
-      stroke: var(--c-red);
-      stroke-width: 0.9;
       margin-block-end: 0.5rem;
+      fill: none;
+      stroke: var(--c-white);
+      stroke-width: 0.9;
     }
   }
 
@@ -82,7 +127,6 @@ const { strings } = Astro.props;
 
   .empty__text {
     margin: 0;
-    color: var(--fg-muted);
   }
 
   .empty__reset {
@@ -91,8 +135,8 @@ const { strings } = Astro.props;
     padding: 0 1.4rem;
     border: 0;
     border-radius: 999px;
-    background: var(--c-red);
-    color: var(--c-white);
+    background: var(--c-white);
+    color: var(--c-red-deep);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     font-weight: 700;
@@ -101,37 +145,12 @@ const { strings } = Astro.props;
     cursor: pointer;
 
     &:hover {
-      background: var(--c-red-bright);
-    }
-  }
-
-  @media (min-width: 40rem) {
-    .grid {
-      --cols: 3;
-      --gap: 1rem;
-      --body-h: 7.75rem;
-
-      row-gap: 2.25rem;
-    }
-  }
-
-  @media (min-width: 64rem) {
-    .results {
-      padding-block: 2.25rem 6rem;
+      background: rgb(250 250 250 / 0.88);
     }
 
-    .grid {
-      --cols: 4;
-      --gap: 1.5rem;
-      --body-h: 7rem;
-
-      row-gap: 3rem;
-    }
-  }
-
-  @media (min-width: 96rem) {
-    .grid {
-      --cols: 5;
+    &:focus-visible {
+      outline: 2px solid var(--c-white);
+      outline-offset: 3px;
     }
   }
 </style>

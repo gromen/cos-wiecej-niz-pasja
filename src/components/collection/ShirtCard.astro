@@ -1,15 +1,19 @@
 ---
 /**
- * One collection card. Everything the client filter needs lives in data-* attributes,
- * so the dataset is never duplicated as JSON.
+ * One collection card, drawn as a locker of the „Czerwona szatnia”: stencilled number above
+ * the door, a recess with vents and a peg, the shirt on its hanger, name plate below.
+ * Everything the client filter needs lives in data-* attributes, so the dataset is never
+ * duplicated as JSON.
  *
  * `.card__visual` is the shared element morphing into the detail page
  * (view-transition-name from shirtTransitionName). It is a 5:6 box: a real cut-out
- * (`data.images.front/back`) renders as <Picture> filling it; until then a <ShirtUse>
- * drawn from the page sprite (<ShirtSymbols> on the collection page).
+ * (`data.images.front/back`) renders as <Picture> filling it; a placeholder (draft) is the
+ * white outline from the page sprite (#shirt-sym-outline in <CollectionResults>); a described
+ * shirt without photos falls back to a <ShirtUse> from <ShirtSymbols>.
  */
 import { Picture } from 'astro:assets';
 import ShirtUse from '../shirt/ShirtUse.astro';
+import { VIEWBOX } from '../shirt/geometry';
 import {
   colorLabel,
   kindLabel,
@@ -32,7 +36,7 @@ interface Props {
   lang: CollectionStrings['lang'];
   /** First visible row: eager front image (no lazy-load delay). */
   eager?: boolean;
-  /** The very first cards (likely LCP): `fetchpriority="high"` on top of eager. */
+  /** Kept for API compatibility: forces an eager front image (no fetchpriority hint). */
   priority?: boolean;
 }
 
@@ -56,8 +60,14 @@ const hasBack = !data.draft;
 const isPhoto = Boolean(front);
 /** Touch screens have no hover: a small button flips photo cards to the back. */
 const canFlip = Boolean(front && back);
-// The visual is 86% of the card (inset 7%); grid: 2 → 3 → 4 → 5 columns.
-const sizes = '(min-width: 96rem) 16vw, (min-width: 64rem) 20vw, (min-width: 40rem) 27vw, 40vw';
+const source = isPhoto ? strings.photo : strings.illustration;
+/** Tag in the locker: the source for described shirts, „do uzupełnienia” for placeholders. */
+const tag = data.draft ? strings.draft : source;
+const srLabel = [fullName, `${strings.number} ${data.number}`, source.toLowerCase(), data.draft && strings.draft]
+  .filter(Boolean)
+  .join(', ');
+// The shirt is ~76% of the card; grid: 2 → 3 → 4 → 5 columns.
+const sizes = '(min-width: 96rem) 15vw, (min-width: 64rem) 19vw, (min-width: 40rem) 26vw, 38vw';
 const widths = [200, 320, 480, 640];
 const loading = eager || priority ? 'eager' : 'lazy';
 ---
@@ -78,59 +88,72 @@ const loading = eager || priority ? 'eager' : 'lazy';
   data-photo={isPhoto ? '1' : '0'}
 >
   <a class="card__link" href={shirtHref(id, lang)}>
-    <div class="card__stage">
-      <span class="card__no" aria-hidden="true">{data.number}</span>
-      <div class="card__visual" data-vt={vtName} style={`view-transition-name: ${vtName}`}>
-        <div class="card__face card__face--front">
+    <span class="card__plate" aria-hidden="true">
+      <span class="card__no">{data.number}</span>
+    </span>
+
+    <div class="card__cell">
+      <span class="card__vents" aria-hidden="true"></span>
+      <span class="card__peg" aria-hidden="true"></span>
+      <div class="card__hang">
+        <svg class="card__hanger" viewBox="0 0 120 40" aria-hidden="true" focusable="false">
+          <path d="M60 2 v6 q0 5 -5 5 M60 13 L8 36 Q4 38 8 38 H112 Q116 38 112 36 L60 13"></path>
+        </svg>
+        <div class="card__visual" data-vt={vtName} style={`view-transition-name: ${vtName}`}>
+          <div class="card__face card__face--front">
+            {
+              front ? (
+                <Picture
+                  src={front}
+                  alt=""
+                  widths={widths}
+                  sizes={sizes}
+                  formats={['avif']}
+                  fallbackFormat="webp"
+                  loading={loading}
+                  decoding="async"
+                />
+              ) : data.draft ? (
+                <svg class="card__outline" viewBox={VIEWBOX} aria-hidden="true" focusable="false">
+                  <use href="#shirt-sym-outline"></use>
+                </svg>
+              ) : (
+                <ShirtUse color={palette.body} trim={palette.trim} />
+              )
+            }
+          </div>
           {
-            front ? (
-              <Picture
-                src={front}
-                alt=""
-                widths={widths}
-                sizes={sizes}
-                formats={['avif']}
-                fallbackFormat="webp"
-                loading={loading}
-                fetchpriority={priority ? 'high' : 'auto'}
-                decoding="async"
-              />
-            ) : (
-              <ShirtUse color={palette.body} trim={palette.trim} />
+            hasBack && (
+              <div class="card__face card__face--back" data-back-pending={back ? '' : undefined}>
+                {back ? (
+                  /* Inert until the first hover / focus / flip tap (collection.ts clones it),
+                     so the grid never downloads backs nobody looks at. */
+                  <template data-back>
+                    <Picture
+                      src={back}
+                      alt=""
+                      widths={widths}
+                      sizes={sizes}
+                      formats={['avif']}
+                      fallbackFormat="webp"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </template>
+                ) : (
+                  <ShirtUse
+                    side="back"
+                    color={palette.body}
+                    trim={palette.trim}
+                    name={surname}
+                    number={data.number}
+                    signed={data.signed}
+                  />
+                )}
+              </div>
             )
           }
         </div>
-        {
-          hasBack && (
-            <div class="card__face card__face--back" data-back-pending={back ? '' : undefined}>
-              {back ? (
-                /* Inert until the first hover / focus / flip tap (collection.ts clones it),
-                   so the grid never downloads 87 backs nobody looks at. */
-                <template data-back>
-                  <Picture
-                    src={back}
-                    alt=""
-                    widths={widths}
-                    sizes={sizes}
-                    formats={['avif']}
-                    fallbackFormat="webp"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </template>
-              ) : (
-                <ShirtUse
-                  side="back"
-                  color={palette.body}
-                  trim={palette.trim}
-                  name={surname}
-                  number={data.number}
-                  signed={data.signed}
-                />
-              )}
-            </div>
-          )
-        }
       </div>
       {
         data.signed && (
@@ -139,32 +162,26 @@ const loading = eager || priority ? 'eager' : 'lazy';
           </svg>
         )
       }
-      <span class={`card__src card__src--${isPhoto ? 'photo' : 'art'}`} aria-hidden="true">
-        {isPhoto ? strings.photo : strings.illustration}
-      </span>
+      <span class={`card__tag card__tag--${isPhoto ? 'photo' : 'art'}`} aria-hidden="true">{tag}</span>
     </div>
 
     <div class="card__body">
       <h3 class="card__name">
-        <span class="visually-hidden">
-          {fullName}, {strings.number} {data.number}, {(isPhoto ? strings.photo : strings.illustration).toLowerCase()}
-        </span>
+        <span class="visually-hidden">{srLabel}</span>
         <span aria-hidden="true">
           {firstNames && <span class="card__first">{firstNames}</span>}
           <span class="card__last">{surname}</span>
         </span>
       </h3>
       <p class="card__meta">{meta.join(' · ')}</p>
-      <ul class="card__badges">
-        {data.signed && <li class="badge badge--signed">★ {strings.signed}</li>}
-        {
-          data.draft ? (
-            <li class="badge badge--draft">{strings.draft}</li>
-          ) : (
-            <li class={`badge badge--${data.status}`}>{statusLabel[data.status][lang]}</li>
-          )
-        }
-      </ul>
+      {
+        (data.signed || !data.draft) && (
+          <ul class="card__badges">
+            {data.signed && <li class="badge badge--signed">★ {strings.signed}</li>}
+            {!data.draft && <li class={`badge badge--${data.status}`}>{statusLabel[data.status][lang]}</li>}
+          </ul>
+        )
+      }
     </div>
   </a>
   {
@@ -183,13 +200,22 @@ const loading = eager || priority ? 'eager' : 'lazy';
 
 <style>
   .card {
+    /* Locker geometry, in units of the card's own width (resolved where used, inside the card). */
+    --pad: 6cqi;
+    --plate: 16cqi;
+    --plate-gap: 3cqi;
+    /* Recess: 5 / 6.4 of the padded width. */
+    --cell: calc((100cqi - 2 * var(--pad)) * 1.28);
+
     position: relative;
-    /* Grid sets --cols / --gap / --body-h; 100cqi = grid width → exact placeholder height. */
+    /* Grid sets --cols / --body-h; here 100cqi = grid width → exact placeholder height. */
     container-type: inline-size;
     content-visibility: auto;
-    contain-intrinsic-block-size: auto
-      calc((100cqi - (var(--cols, 2) - 1) * var(--gap, 0.75rem)) / var(--cols, 2) * 1.2 + var(--body-h, 7.5rem));
+    contain-intrinsic-block-size: auto calc(100cqi / var(--cols, 2) * 1.49 + var(--body-h, 6.5rem));
     view-transition-class: collection-card;
+    /* Hairline seams: each locker draws its right / bottom edge, the bank its top / left. */
+    border-inline-end: 1px solid var(--line);
+    border-block-end: 1px solid var(--line);
 
     &[hidden] {
       display: none;
@@ -199,89 +225,112 @@ const loading = eager || priority ? 'eager' : 'lazy';
   .card__link {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 0.7rem;
+    grid-template-rows: auto auto 1fr;
     block-size: 100%;
+    padding: var(--pad) var(--pad) 7cqi;
+    color: var(--c-white);
     text-decoration: none;
-    color: var(--fg);
-    border-radius: var(--radius);
     -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--dur) var(--ease-out);
 
     /* content-visibility implies paint containment → keep the ring inside the box. */
     &:focus-visible {
-      outline: 2px solid var(--accent-2);
-      outline-offset: -2px;
+      outline: 2px solid var(--c-white);
+      outline-offset: -4px;
     }
   }
 
-  .card__stage {
-    position: relative;
-    isolation: isolate;
-    aspect-ratio: 5 / 6;
-    overflow: clip;
-    border-radius: var(--radius);
-    background:
-      linear-gradient(118deg, transparent 0 44%, rgb(250 250 250 / 0.055) 44% 57%, transparent 57%),
-      radial-gradient(75% 60% at 50% 40%, #133a5e 0%, #0a2742 55%, #061a2c 100%);
-    box-shadow: inset 0 0 0 1px rgb(185 200 213 / 0.1);
-
-    /* Soft floor shadow (cheaper than a filter on 87 SVGs). */
-    &::before {
-      content: '';
-      position: absolute;
-      inset: auto 18% 4% 18%;
-      block-size: 9%;
-      border-radius: 50%;
-      background: radial-gradient(closest-side, rgb(0 0 0 / 0.55), transparent);
-      transition:
-        scale var(--dur) var(--ease-out),
-        opacity var(--dur) var(--ease-out);
-    }
-
-    /* Red sash sweeping across the panel on hover. */
-    &::after {
-      content: '';
-      position: absolute;
-      z-index: -1;
-      inset-block: -20%;
-      inset-inline-start: 38%;
-      inline-size: 16%;
-      background: var(--c-red);
-      opacity: 0;
-      transform: skewX(-24deg) translateX(-180%);
-      transition:
-        transform var(--dur) var(--ease-out),
-        opacity var(--dur-fast);
-    }
+  /* Stencilled number above the door: a bridge cut through the middle like a real stencil. */
+  .card__plate {
+    display: flex;
+    align-items: end;
+    block-size: var(--plate);
+    margin-block-end: var(--plate-gap);
   }
 
-  /* Big back-number in display type, outlined, sitting behind the shirt. */
   .card__no {
-    position: absolute;
-    z-index: -1;
-    inset-block-start: -0.06em;
-    inset-inline-start: 0.04em;
     font-family: var(--font-display);
-    font-size: 46cqi;
+    font-size: 19cqi;
     font-weight: 900;
     font-stretch: 125%;
-    line-height: 1;
-    letter-spacing: -0.04em;
-    color: transparent;
-    -webkit-text-stroke: 1px rgb(250 250 250 / 0.26);
-    transition:
-      color var(--dur) var(--ease-out),
-      -webkit-text-stroke-color var(--dur) var(--ease-out),
-      translate var(--dur) var(--ease-out);
+    line-height: 0.85;
+    letter-spacing: -0.02em;
+    color: rgb(250 250 250 / 0.88);
+    mask: linear-gradient(#000 0 46%, transparent 46% 55%, #000 55%);
+    transition: color var(--dur-fast);
   }
 
-  /* 5:6 box (inset is proportional on both axes) – <Picture>/<svg> fill it. */
-  .card__visual {
+  /* The locker interior: darker recess, vents on top, peg in the middle. */
+  .card__cell {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: start center;
+    block-size: var(--cell);
+    overflow: clip;
+    border-radius: 2px;
+    background:
+      radial-gradient(80% 55% at 50% 45%, rgb(255 255 255 / 0.05), transparent 70%),
+      linear-gradient(rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.14) 30%, rgb(0 0 0 / 0.22));
+    box-shadow:
+      inset 0 0.6rem 1.2rem -0.4rem rgb(0 0 0 / 0.45),
+      inset 0 0 0 1px rgb(0 0 0 / 0.18);
+  }
+
+  .card__vents {
     position: absolute;
-    inset: 7%;
+    inset-block-start: 2.5cqi;
+    inset-inline: 30%;
+    block-size: 4cqi;
+    border-radius: 1px;
+    background: repeating-linear-gradient(180deg, rgb(0 0 0 / 0.35) 0 1.2cqi, transparent 1.2cqi 2cqi);
+    opacity: 0.7;
+  }
+
+  .card__peg {
+    position: absolute;
+    z-index: 2;
+    /* Sits in the hanger's hook (hook top ≈ hang top + 0.8cqi). */
+    inset-block-start: 10cqi;
+    inset-inline-start: 50%;
+    inline-size: 4cqi;
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #c9c9c9 60%, #8d8d8d);
+    box-shadow: 0 0.15rem 0.3rem rgb(0 0 0 / 0.4);
+  }
+
+  /* Hanger + shirt swing together from the peg. */
+  .card__hang {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    inline-size: 86%;
+    /* 8 + hanger 16 − 2.3 overlap + shirt 90.8 ≈ 112.5cqi ≤ recess 112.6cqi – no clipping. */
+    margin-block-start: 8cqi;
+    transform-origin: 50% 0;
+  }
+
+  .card__hanger {
+    inline-size: 64%;
+    margin-block-end: -3%;
+    overflow: visible;
+    fill: none;
+    stroke: rgb(250 250 250 / 0.7);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* 5:6 box – <Picture>/<svg> fill it. */
+  .card__visual {
+    position: relative;
+    inline-size: 100%;
+    aspect-ratio: 5 / 6;
     perspective: 900px;
     /* `exhibit` too: the detail page's shared-element timing targets that class. */
     view-transition-class: collection-shirt exhibit;
-    transition: transform calc(var(--dur) * 1.4) var(--ease-out);
   }
 
   .card__face {
@@ -293,6 +342,7 @@ const loading = eager || priority ? 'eager' : 'lazy';
     :global(img),
     :global(picture),
     :global(svg) {
+      display: block;
       inline-size: 100%;
       block-size: 100%;
       object-fit: contain;
@@ -303,45 +353,60 @@ const loading = eager || priority ? 'eager' : 'lazy';
     transform: rotateY(180deg);
   }
 
-  .card__star {
-    position: absolute;
-    inset-block-start: 0.6rem;
-    inset-inline-end: 0.6rem;
-    inline-size: clamp(0.9rem, 9cqi, 1.4rem);
-    fill: var(--c-gold);
+  /* Only the few real cut-outs cast a shadow (no filter on the many outline drawings). */
+  .card[data-photo='1'] .card__face :global(img) {
+    filter: drop-shadow(0 0.6rem 0.8rem rgb(0 0 0 / 0.35));
   }
 
-  /* Source badge: real photo vs. illustration – mono, bottom-left of the stage. */
-  .card__src {
+  /* Placeholders: chalk-white outline drawing of the shirt (strokes live in the sprite). */
+  .card__outline {
+    overflow: visible;
+    color: var(--c-white);
+    opacity: 0.85;
+  }
+
+  .card__star {
     position: absolute;
-    inset-block-end: 0.45rem;
-    inset-inline-start: 0.45rem;
+    inset-block-start: 3.5cqi;
+    inset-inline-end: 4cqi;
+    inline-size: 9cqi;
+    fill: var(--c-gold);
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.4));
+  }
+
+  /* Tag in the locker's bottom-left corner: real photo / illustration / „do uzupełnienia”. */
+  .card__tag {
+    position: absolute;
+    inset-block-end: 4cqi;
+    inset-inline-start: 4cqi;
+    max-inline-size: calc(100% - 8cqi - 2.75rem);
     padding: 0.18rem 0.4rem 0.12rem;
     border-radius: 2px;
     font-family: var(--font-mono);
-    font-size: 0.56rem;
-    letter-spacing: 0.08em;
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
     line-height: 1.3;
     text-transform: uppercase;
     pointer-events: none;
   }
 
-  .card__src--photo {
-    background: rgb(250 250 250 / 0.92);
-    color: var(--c-ink);
+  .card__tag--photo {
+    background: rgb(250 250 250 / 0.94);
+    color: var(--c-red-deep);
+    font-weight: 700;
   }
 
-  .card__src--art {
-    border: 1px dashed rgb(185 200 213 / 0.4);
-    color: var(--fg-muted);
+  .card__tag--art {
+    border: 1px dashed var(--line-strong);
+    color: var(--c-white);
   }
 
-  /* Touch flip affordance – sits on the stage's bottom-right corner (stage = 120cqi tall). */
+  /* Touch flip affordance – on the recess's bottom-right corner (cell bottom, in card units). */
   .card__flip {
     position: absolute;
     z-index: 1;
-    inset-block-start: calc(120cqi - 2.75rem);
-    inset-inline-end: 0;
+    inset-block-start: calc(var(--pad) + var(--plate) + var(--plate-gap) + var(--cell) - 2.75rem);
+    inset-inline-end: var(--pad);
     display: grid;
     place-items: center;
     inline-size: 2.75rem;
@@ -359,9 +424,14 @@ const loading = eager || priority ? 'eager' : 'lazy';
     }
 
     &:focus-visible {
-      outline: 2px solid var(--accent-2);
+      outline: 2px solid var(--c-white);
       outline-offset: -4px;
       border-radius: 50%;
+    }
+
+    /* Fine pointers flip on hover/focus – the button is only for touch. */
+    @media (hover: hover) and (pointer: fine) {
+      display: none;
     }
   }
 
@@ -384,13 +454,6 @@ const loading = eager || priority ? 'eager' : 'lazy';
     rotate: 180deg;
   }
 
-  /* Fine pointers flip on hover/focus – the button is only for touch. */
-  @media (hover: hover) and (pointer: fine) {
-    .card__flip {
-      display: none;
-    }
-  }
-
   /* Tapped flip (touch). Leaving for the detail page snaps back to the front. */
   :global(:root:not([data-leaving])) .card[data-flipped] {
     .card__face--front:has(+ .card__face--back:not([data-back-pending])) {
@@ -402,24 +465,12 @@ const loading = eager || priority ? 'eager' : 'lazy';
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .card__visual,
-    .card__face,
-    .card__no,
-    .card__stage::before,
-    .card__stage::after,
-    .card__last::before,
-    .card__flip-icon {
-      transition-duration: 0.01ms;
-      transition-delay: 0s;
-    }
-  }
-
+  /* Name plate under the door. */
   .card__body {
     display: grid;
     align-content: start;
-    gap: 0.35rem;
-    padding-inline: 0.1rem;
+    gap: 0.4rem;
+    margin-block-start: 4cqi;
   }
 
   .card__name {
@@ -437,29 +488,14 @@ const loading = eager || priority ? 'eager' : 'lazy';
     font-size: var(--fs-xs);
     font-weight: 500;
     letter-spacing: 0.08em;
-    color: var(--fg-muted);
   }
 
   .card__last {
-    position: relative;
-    isolation: isolate;
     display: inline-block;
     max-inline-size: 100%;
-    font-size: clamp(1.05rem, 11.5cqi, 2.1rem);
+    font-size: clamp(1.05rem, 11cqi, 2rem);
     font-stretch: 75%;
     overflow-wrap: anywhere;
-
-    /* The red sash that wipes under the name on hover. */
-    &::before {
-      content: '';
-      position: absolute;
-      z-index: -1;
-      inset: 18% -0.25em 2% -0.2em;
-      background: var(--c-red);
-      transform: skewX(-14deg) scaleX(0);
-      transform-origin: left;
-      transition: transform var(--dur) var(--ease-out);
-    }
   }
 
   .card__meta {
@@ -467,7 +503,6 @@ const loading = eager || priority ? 'eager' : 'lazy';
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     line-height: 1.35;
-    letter-spacing: 0.02em;
     color: var(--fg-muted);
   }
 
@@ -475,100 +510,72 @@ const loading = eager || priority ? 'eager' : 'lazy';
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem;
-    margin: 0.15rem 0 0;
+    margin: 0.1rem 0 0;
     padding: 0;
     list-style: none;
   }
 
+  /* White on red only; gold is a decorative border, never text. */
   .badge {
     padding: 0.2rem 0.45rem 0.15rem;
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
     border-radius: 2px;
     font-family: var(--font-mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.08em;
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
     line-height: 1.3;
     text-transform: uppercase;
+    color: var(--c-white);
   }
 
   .badge--signed {
     border-color: transparent;
     background: var(--c-white);
-    color: var(--c-red);
+    color: var(--c-red-deep);
     font-weight: 700;
   }
 
   .badge--match-worn {
-    border-color: transparent;
-    background: var(--c-red);
-    color: var(--c-white);
+    border-color: var(--c-white);
+    font-weight: 700;
   }
 
   .badge--match-issued {
     border-color: var(--c-gold);
-    color: var(--c-gold);
   }
 
-  .badge--unconfirmed,
-  .badge--draft {
+  .badge--unconfirmed {
     border-style: dashed;
-    color: var(--fg-muted);
   }
 
-  /* Placeholders: muted, dashed, still a link. */
+  /* Placeholders: outline number, hatched recess – still a link. */
   .card[data-draft='1'] {
-    .card__stage {
-      background:
-        repeating-linear-gradient(118deg, transparent 0 14px, rgb(185 200 213 / 0.035) 14px 15px),
-        radial-gradient(75% 60% at 50% 40%, #0d2a44 0%, #071a2b 70%);
-      box-shadow: none;
-      outline: 1px dashed rgb(185 200 213 / 0.32);
-      outline-offset: -1px;
-    }
-
-    .card__face {
-      opacity: 0.58;
-    }
-
-    .card__stage::before {
-      opacity: 0.4;
-    }
-
     .card__no {
-      -webkit-text-stroke-color: rgb(250 250 250 / 0.14);
+      color: transparent;
+      -webkit-text-stroke: 1px var(--line-strong);
     }
 
-    .card__last {
-      color: rgb(250 250 250 / 0.78);
+    .card__cell {
+      background:
+        repeating-linear-gradient(118deg, transparent 0 14px, rgb(0 0 0 / 0.08) 14px 15px),
+        linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.1));
     }
   }
 
-  /* Hover / keyboard focus – lift, tilt, flip to the back, sash under the name. */
+  /* Hover (fine pointers) / keyboard focus: the locker lights up, the shirt sways on its peg
+     and photo cards turn to the back. */
   @media (hover: hover) and (pointer: fine) {
     :global(:root:not([data-leaving])) .card__link:hover {
-      @media (prefers-reduced-motion: no-preference) {
-        .card__visual {
-          transform: translateY(-4%) rotate(-2deg) scale(1.03);
-        }
-      }
-
-      .card__stage::before {
-        scale: 0.82;
-        opacity: 0.7;
-      }
-
-      .card__stage::after {
-        opacity: 1;
-        transform: skewX(-24deg) translateX(0);
-      }
+      background: rgb(255 255 255 / 0.06);
 
       .card__no {
-        -webkit-text-stroke-color: rgb(250 250 250 / 0.6);
-        translate: 0.04em 0;
+        color: var(--c-white);
       }
 
-      .card__last::before {
-        transform: skewX(-14deg) scaleX(1);
+      @media (prefers-reduced-motion: no-preference) {
+        .card__hang {
+          animation: kolekcja-sway 1.6s var(--ease-out) both;
+        }
       }
 
       .card__face--front:has(+ .card__face--back:not([data-back-pending])) {
@@ -582,22 +589,28 @@ const loading = eager || priority ? 'eager' : 'lazy';
       .card__face--back :global(.sig) {
         opacity: 1;
         stroke-dashoffset: 0;
-        transition:
-          stroke-dashoffset 1.2s var(--ease-in-out) 0.5s,
-          opacity 0s 0.5s;
+
+        /* The signature draws itself only when motion is welcome (instant otherwise). */
+        @media (prefers-reduced-motion: no-preference) {
+          transition:
+            stroke-dashoffset 1.2s var(--ease-in-out) 0.5s,
+            opacity 0s 0.5s;
+        }
       }
     }
   }
 
   :global(:root:not([data-leaving])) .card__link:focus-visible {
-    @media (prefers-reduced-motion: no-preference) {
-      .card__visual {
-        transform: translateY(-4%) rotate(-2deg) scale(1.03);
-      }
+    background: rgb(255 255 255 / 0.06);
+
+    .card__no {
+      color: var(--c-white);
     }
 
-    .card__last::before {
-      transform: skewX(-14deg) scaleX(1);
+    @media (prefers-reduced-motion: no-preference) {
+      .card__hang {
+        animation: kolekcja-sway 1.6s var(--ease-out) both;
+      }
     }
 
     .card__face--front:has(+ .card__face--back:not([data-back-pending])) {
@@ -609,10 +622,22 @@ const loading = eager || priority ? 'eager' : 'lazy';
     }
   }
 
-  /* Leaving for a detail page: snap back to the front so the morph starts from it.
+  /* Leaving for a detail page: snap back to the front, upright, so the morph starts from it.
      (Outranks every card transition above – they are all single-class, zero-specificity scoped.) */
   :global(:root[data-leaving]) .card__link * {
     transition: none;
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card__link,
+    .card__face,
+    .card__face--back :global(.sig),
+    .card__no,
+    .card__flip-icon {
+      transition-duration: 0.01ms;
+      transition-delay: 0s;
+    }
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -634,6 +659,28 @@ const loading = eager || priority ? 'eager' : 'lazy';
       opacity: 0;
       translate: 0 2.5rem;
       scale: 0.96;
+    }
+  }
+
+  /* Damped pendulum from the peg. */
+  @keyframes kolekcja-sway {
+    0% {
+      rotate: 0deg;
+    }
+    20% {
+      rotate: 3.5deg;
+    }
+    45% {
+      rotate: -2.2deg;
+    }
+    68% {
+      rotate: 1.1deg;
+    }
+    86% {
+      rotate: -0.4deg;
+    }
+    100% {
+      rotate: 0deg;
     }
   }
 </style>

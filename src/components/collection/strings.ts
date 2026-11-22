@@ -30,7 +30,13 @@ export interface CollectionStrings {
     lead: string;
     /** `{described}` / `{drafts}` placeholders. */
     tally: string;
+    /** After the live count: „86 koszulek / w szatni”. */
+    countSuffix: string;
+    /** Visible heading of the browse area („Szatnia”). */
+    room: string;
     sash: string;
+    /** Marquee pause control (WCAG 2.2.2): one constant label, state carried by aria-pressed. */
+    sashPause: string;
   };
   filters: {
     region: string;

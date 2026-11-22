@@ -3,8 +3,10 @@
  * Filter UI. Renders three siblings (must be direct children of the element that also
  * wraps the grid, so the sticky bar stays stuck through the whole list):
  *  - `.bar`         sticky: search, count, reset, „Filtry” button
- *  - `.facets-home` chip groups + toggles + sort (inline on ≥48rem)
+ *  - `.facets-home` chip groups + toggles + sort – one row per group (on phones each row
+ *                   scrolls sideways inside itself)
  *  - `<dialog>`     bottom sheet on phones – the runtime moves `.facets` into it on open
+ *                   and back home once it has closed
  * All controls belong to one <form> via the `form` attribute, wherever they live.
  */
 import type { Facet } from './model';
@@ -131,6 +133,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     display: none;
   }
 
+  /* ——— Sticky bar: search, count, reset, „Filtry” ——— */
   .bar {
     position: sticky;
     /* Parks just below the floating site header while it is shown (0 once it hides). */
@@ -138,8 +141,9 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     z-index: 30;
     container-type: scroll-state;
     padding: 0.55rem var(--gutter);
-    background: rgb(5 15 26 / 0.95);
-    border-block-end: 1px solid var(--line);
+    /* Solid, no backdrop blur (cheap to scroll over 86 lockers). */
+    background: var(--c-red-deep);
+    border-block: 1px solid var(--line);
     view-transition-name: collection-bar;
 
     @media (prefers-reduced-motion: no-preference) {
@@ -152,12 +156,21 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     align-items: center;
     gap: 0.5rem;
     margin: 0;
+
+    @media (min-width: 48rem) {
+      gap: 0.85rem;
+    }
   }
 
   .field {
     position: relative;
     flex: 1;
     min-inline-size: 0;
+
+    @media (min-width: 48rem) {
+      flex: 0 1 26rem;
+      margin-inline-end: auto;
+    }
   }
 
   .field__icon {
@@ -167,7 +180,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     inline-size: 1.05rem;
     translate: 0 -50%;
     fill: none;
-    stroke: var(--fg-muted);
+    stroke: var(--c-white);
     stroke-width: 2;
     stroke-linecap: round;
     pointer-events: none;
@@ -177,10 +190,10 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     inline-size: 100%;
     block-size: 2.75rem;
     padding: 0 0.9rem 0 2.5rem;
-    border: 1px solid var(--line-control);
+    border: 1.5px solid var(--line-control);
     border-radius: 999px;
-    background: rgb(250 250 250 / 0.05);
-    color: var(--fg);
+    background: rgb(0 0 0 / 0.16);
+    color: var(--c-white);
     /* ≥16px – no iOS zoom on focus. */
     font: 500 1rem/1 var(--font-body);
     transition:
@@ -189,14 +202,18 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
 
     &::placeholder {
       color: var(--fg-muted);
-      opacity: 0.8;
+      opacity: 1;
+    }
+
+    &:hover {
+      border-color: var(--c-white);
     }
 
     &:focus-visible {
-      outline: 2px solid var(--accent-2);
-      outline-offset: 1px;
-      border-color: transparent;
-      background: rgb(250 250 250 / 0.09);
+      outline: 2px solid var(--c-white);
+      outline-offset: 2px;
+      border-color: var(--c-white);
+      background: rgb(0 0 0 / 0.24);
     }
   }
 
@@ -211,7 +228,10 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
 
     [data-count-shown] {
       font-weight: 700;
-      color: var(--c-white);
+    }
+
+    @media (min-width: 48rem) {
+      display: block;
     }
   }
 
@@ -230,12 +250,13 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     gap: 0.45rem;
     min-block-size: 2.75rem;
     padding: 0 1rem;
-    border: 1px solid var(--line-control);
+    border: 1.5px solid var(--line-control);
     border-radius: 999px;
     background: transparent;
-    color: var(--fg);
+    color: var(--c-white);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
+    font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     cursor: pointer;
@@ -246,6 +267,11 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
 
     &:hover {
       border-color: var(--c-white);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--c-white);
+      outline-offset: 2px;
     }
 
     svg {
@@ -259,15 +285,26 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
 
   .bar__reset {
     display: none;
+
+    @media (min-width: 48rem) {
+      &:not([hidden]) {
+        display: inline-flex;
+      }
+    }
   }
 
+  /* White pill on red – the primary action of the bar. */
   .bar__open {
-    background: var(--c-red);
-    border-color: var(--c-red);
+    border-color: var(--c-white);
+    background: var(--c-white);
+    color: var(--c-red-deep);
 
     &:hover {
-      background: var(--c-red-bright);
-      border-color: var(--c-red-bright);
+      background: rgb(250 250 250 / 0.88);
+    }
+
+    @media (min-width: 48rem) {
+      display: none;
     }
   }
 
@@ -278,8 +315,8 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     block-size: 1.3rem;
     padding-inline: 0.3rem;
     border-radius: 999px;
-    background: var(--c-white);
-    color: var(--c-red);
+    background: var(--c-red-deep);
+    color: var(--c-white);
     font-weight: 700;
     letter-spacing: 0;
 
@@ -288,16 +325,16 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     }
   }
 
-  /* ——— Facets ——— */
+  /* ——— Facets: one row per group (label + red/white pill chips) ——— */
   .facets-home {
-    display: none;
+    padding: 0.9rem var(--gutter) clamp(1.75rem, 4vw, 2.75rem);
     /* „Filtry” jumps here: land below the sticky bar (≈ 2.75rem control + padding + border). */
     scroll-margin-block-start: calc(5rem + var(--hdr-offset, 0px));
   }
 
   .facets {
     display: grid;
-    gap: 1.5rem;
+    gap: 0.6rem;
   }
 
   .group {
@@ -307,34 +344,76 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     border: 0;
   }
 
+  /* Floated, so the legend sits at the start of its chip row (a legend is never a flex item);
+     the chip row – a flex container – keeps clear of the float and takes the rest of the line. */
   .group__legend {
-    margin-block-end: 0.6rem;
-    padding: 0;
+    float: inline-start;
+    display: flex;
+    align-items: center;
+    inline-size: 5.25rem;
+    min-block-size: 2.5rem;
+    margin: 0;
+    padding: 0 0.5rem 0 0;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--fg-muted);
   }
 
-  .chips {
+  /* Phones: a row scrolls sideways inside itself, bleeding to the screen edge – never wider than the page. */
+  .chips,
+  .options {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: 0.4rem;
+    margin-inline-end: calc(var(--gutter) * -1);
+    padding-inline-end: var(--gutter);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    > * {
+      scroll-snap-align: start;
+    }
+
+    /* More chips off to the right (set by collection.ts while the row overflows and is not
+       scrolled to its end): fade the edge as a cue. */
+    &[data-more] {
+      mask-image: linear-gradient(90deg, #000 calc(100% - 3.5rem), transparent);
+    }
+
+    @media (min-width: 48rem) {
+      flex-wrap: wrap;
+      margin-inline-end: 0;
+      padding-inline-end: 0;
+      overflow: visible;
+      mask-image: none;
+    }
   }
 
-  .chip {
+  .chip,
+  .switch {
     position: relative;
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
+    flex: none;
     min-block-size: 2.5rem;
-    padding: 0 0.85rem;
-    border: 1px solid var(--line-control);
+    padding: 0 0.9rem;
+    border: 1.5px solid var(--line-control);
     border-radius: 999px;
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    letter-spacing: 0.04em;
+    background: rgb(0 0 0 / 0.1);
+    color: var(--c-white);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    font-stretch: 90%;
+    white-space: nowrap;
     cursor: pointer;
     user-select: none;
     transition:
@@ -342,6 +421,31 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       border-color var(--dur-fast),
       color var(--dur-fast);
 
+    &:hover {
+      border-color: var(--c-white);
+    }
+
+    &:has(:focus-visible) {
+      outline: 2px solid var(--c-white);
+      outline-offset: 2px;
+    }
+
+    &:has(:checked) {
+      border-color: var(--c-white);
+      background: var(--c-white);
+      color: var(--c-red-deep);
+
+      .chip__count {
+        color: var(--c-red-deep);
+      }
+
+      .chip__swatch {
+        box-shadow: inset 0 0 0 1px rgb(5 15 26 / 0.45);
+      }
+    }
+  }
+
+  .chip {
     input {
       position: absolute;
       inset: 0;
@@ -350,29 +454,10 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       cursor: pointer;
     }
 
-    &:hover {
-      border-color: rgb(250 250 250 / 0.6);
-    }
-
-    &:has(:focus-visible) {
-      outline: 2px solid var(--accent-2);
-      outline-offset: 2px;
-    }
-
-    &:has(:checked) {
-      border-color: var(--c-white);
-      background: var(--c-white);
-      color: var(--c-ink);
-
-      .chip__count {
-        color: var(--c-red);
-      }
-    }
-
     /* Zero results with the other filters: still readable, just clearly secondary. */
     &[data-empty]:not(:has(:checked)) {
       border-style: dashed;
-      color: var(--fg-muted);
+      background: transparent;
 
       .chip__swatch {
         opacity: 0.6;
@@ -381,52 +466,48 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
   }
 
   .chip__swatch {
+    flex: none;
     inline-size: 0.85rem;
     block-size: 0.85rem;
     border-radius: 50%;
     background: var(--sw);
-    box-shadow: inset 0 0 0 1px rgb(250 250 250 / 0.45);
+    /* Light ring on red, dark ring once the chip turns white – every swatch stays visible. */
+    box-shadow: inset 0 0 0 1px rgb(250 250 250 / 0.7);
   }
 
   .chip__count {
-    color: var(--fg-muted);
-    font-size: 0.68rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .options {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .switch {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    min-block-size: 2.75rem;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.04em;
-    cursor: pointer;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-muted);
+  }
+
+  /* Signed / described: a pill holding a small switch (still role="switch"). */
+  .switch {
+    gap: 0.55rem;
+    padding-inline-start: 0.55rem;
 
     input {
       position: relative;
       flex: none;
-      inline-size: 2.5rem;
-      block-size: 1.4rem;
+      inline-size: 2.1rem;
+      block-size: 1.2rem;
       margin: 0;
-      border: 1px solid var(--line-control);
+      border: 1.5px solid var(--line-control);
       border-radius: 999px;
-      background: rgb(250 250 250 / 0.16);
+      background: rgb(0 0 0 / 0.2);
       appearance: none;
       cursor: pointer;
-      transition: background-color var(--dur-fast);
+      transition:
+        background-color var(--dur-fast),
+        border-color var(--dur-fast);
 
       &::before {
         content: '';
         position: absolute;
-        inset-block: 0.2rem;
-        inset-inline-start: 0.2rem;
+        inset-block: 0.12rem;
+        inset-inline-start: 0.12rem;
         aspect-ratio: 1;
         border-radius: 50%;
         background: var(--c-white);
@@ -434,52 +515,72 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       }
 
       &:checked {
-        border-color: var(--c-red);
-        background: var(--c-red);
+        border-color: var(--c-red-deep);
+        background: var(--c-red-deep);
 
         &::before {
-          translate: 1.1rem 0;
+          translate: 0.9rem 0;
         }
       }
 
+      /* The pill draws the focus ring. */
       &:focus-visible {
-        outline: 2px solid var(--accent-2);
-        outline-offset: 2px;
+        outline: none;
       }
     }
   }
 
   .sort {
-    display: flex;
+    display: inline-flex;
+    flex: none;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.55rem;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    @media (min-width: 48rem) {
+      margin-inline-start: 0.75rem;
+    }
 
     select {
       min-block-size: 2.5rem;
-      padding: 0 2.2rem 0 0.85rem;
-      border: 1px solid var(--line-control);
+      padding: 0 2.2rem 0 0.9rem;
+      border: 1.5px solid var(--line-control);
       border-radius: 999px;
       background:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fafafa' stroke-width='2'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")
           right 0.7rem center / 1rem no-repeat,
-        rgb(250 250 250 / 0.05);
-      color: var(--fg);
-      font: inherit;
+        rgb(0 0 0 / 0.1);
+      color: var(--c-white);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-stretch: 90%;
+      letter-spacing: 0;
+      text-transform: none;
       /* ≥16px on phones – no iOS zoom. */
       font-size: 1rem;
       appearance: none;
       cursor: pointer;
 
+      &:hover {
+        border-color: var(--c-white);
+      }
+
       &:focus-visible {
-        outline: 2px solid var(--accent-2);
+        outline: 2px solid var(--c-white);
         outline-offset: 2px;
       }
 
       option {
-        background: var(--c-navy-deep);
+        background: #6a0717;
+        color: var(--c-white);
+      }
+
+      @media (min-width: 48rem) {
+        font-size: var(--fs-sm);
       }
     }
   }
@@ -493,8 +594,8 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     padding: 0;
     border: 0;
     border-radius: 1rem 1rem 0 0;
-    background: var(--c-navy-deep);
-    color: var(--fg);
+    background: linear-gradient(180deg, var(--c-red-deep), #6a0717);
+    color: var(--c-white);
     box-shadow: 0 -1rem 3rem rgb(0 0 0 / 0.45);
     translate: 0 100%;
     transition:
@@ -509,7 +610,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     }
 
     &::backdrop {
-      background: rgb(5 15 26 / 0.7);
+      background: rgb(30 2 8 / 0.72);
       opacity: 0;
       transition:
         opacity var(--dur) var(--ease-out),
@@ -519,6 +620,32 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
 
     &[open]::backdrop {
       opacity: 1;
+    }
+
+    /* In the sheet the groups stack: legend above, chips wrap (no sideways scroll). */
+    .group__legend {
+      float: none;
+      inline-size: auto;
+      min-block-size: 0;
+      margin-block-end: 0.55rem;
+    }
+
+    .facets {
+      gap: 1.4rem;
+    }
+
+    .chips,
+    .options {
+      flex-wrap: wrap;
+      margin-inline-end: 0;
+      padding-inline-end: 0;
+      overflow: visible;
+      mask-image: none;
+    }
+
+    .chip,
+    .switch {
+      min-block-size: 2.75rem;
     }
   }
 
@@ -548,7 +675,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       inline-size: 2.5rem;
       block-size: 0.25rem;
       border-radius: 999px;
-      background: rgb(250 250 250 / 0.25);
+      background: rgb(250 250 250 / 0.35);
       translate: -50% 0;
     }
   }
@@ -582,84 +709,12 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
   }
 
   .btn--primary {
-    border-color: var(--c-red);
-    background: var(--c-red);
-    font-weight: 700;
+    border-color: var(--c-white);
+    background: var(--c-white);
+    color: var(--c-red-deep);
 
     &:hover {
-      border-color: var(--c-red-bright);
-      background: var(--c-red-bright);
-    }
-  }
-
-  /* ——— Tablet / desktop: chips inline, sheet button only once the bar is stuck ——— */
-  @media (min-width: 48rem) {
-    .bar {
-      background: rgb(5 15 26 / 0.9);
-      backdrop-filter: blur(14px) saturate(1.3);
-    }
-
-    .bar__form {
-      gap: 0.85rem;
-    }
-
-    .field {
-      flex: 0 1 26rem;
-      margin-inline-end: auto;
-    }
-
-    .bar__count {
-      display: block;
-    }
-
-    .bar__reset:not([hidden]) {
-      display: inline-flex;
-    }
-
-    .bar__open {
-      display: none;
-    }
-
-    .facets-home {
-      display: block;
-      padding: 1rem var(--gutter) 1.25rem;
-      border-block-end: 1px solid var(--line);
-    }
-
-    .facets {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem 2.5rem;
-    }
-
-    .group__legend {
-      margin-block-end: 0.45rem;
-    }
-
-    .chips {
-      gap: 0.35rem;
-    }
-
-    .chip {
-      min-block-size: 2.15rem;
-      padding-inline: 0.75rem;
-    }
-
-    .switch {
-      min-block-size: 2.15rem;
-    }
-
-
-    .options {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.4rem 1.5rem;
-    }
-
-    .sort select {
-      min-block-size: 2.15rem;
-      font-size: var(--fs-xs);
+      background: rgb(250 250 250 / 0.88);
     }
   }
 

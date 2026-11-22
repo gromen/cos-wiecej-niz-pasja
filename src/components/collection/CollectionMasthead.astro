@@ -1,8 +1,10 @@
 ---
 /**
- * Red Trybuna band: huge „KOLEKCJA” punched in with animated font-stretch,
- * live count (updated by the client runtime through [data-count-*]) and a white sash.
- * Deliberately short – the grid must be reachable fast on phones.
+ * „Czerwona szatnia” hero: short – the big „KOLEKCJA”, the live count as an outline numeral
+ * (updated by the client runtime through [data-count-*]) and the lead. Below it the sash hangs
+ * as the locker-room rail: a slow, pausable marquee (no reveal wipe). Then the visible
+ * „Szatnia” heading with the described / waiting tally, introducing the filters and lockers.
+ * The page body paints the red → claret background; this band is transparent.
  */
 import { plural } from './search';
 import type { CollectionStrings } from './strings';
@@ -15,317 +17,318 @@ interface Props {
 }
 
 const { strings, forms, total, described } = Astro.props;
-const chars = [...strings.heading.toUpperCase()];
 const tally = strings.tally.replace('{described}', String(described)).replace('{drafts}', String(total - described));
 const STAR = '12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6';
 ---
 
 <section class="masthead" aria-labelledby="collection-title">
-  <svg class="masthead__bigstar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <polygon points={STAR}></polygon>
-  </svg>
+  <p class="masthead__eyebrow">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polygon points={STAR}></polygon></svg>
+    {strings.eyebrow}
+  </p>
 
-  <div class="masthead__inner">
-    <p class="masthead__eyebrow">
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polygon points={STAR}></polygon></svg>
-      {strings.eyebrow}
-    </p>
-
+  <div class="masthead__row">
     <h1 id="collection-title" class="masthead__title">
-      <span class="visually-hidden">{strings.heading}</span>
-      <span class="masthead__word" aria-hidden="true">
-        {
-          chars.map((char, i) => (
-            <span class="ch" style={`--i:${i}`}>
-              <span class="ghost">{char}</span>
-              <span class="glyph">{char}</span>
-            </span>
-          ))
-        }
-      </span>
+      <!-- The ghost reserves the final (wide) width, so the stretch-in never shifts the row. -->
+      <span class="masthead__ghost" aria-hidden="true">{strings.heading}</span>
+      <span class="masthead__word">{strings.heading}</span>
     </h1>
-
-    <div class="masthead__row">
-      <p class="masthead__count">
-        <span class="masthead__num" data-count-shown>{total}</span>{' '}
-        <span class="masthead__unit" data-count-label>{plural(total, forms)}</span>
-      </p>
-      <div class="masthead__copy">
-        <p class="masthead__lead">{strings.lead}</p>
-        <p class="masthead__tally">{tally}</p>
-      </div>
-    </div>
+    <p class="masthead__count">
+      <span class="masthead__num" data-count-shown>{total}</span>
+      <span class="masthead__unit">
+        <span data-count-label>{plural(total, forms)}</span><br />{strings.countSuffix}
+      </span>
+    </p>
   </div>
 
-  <div class="masthead__sash" aria-hidden="true">
-    <div class="masthead__track">
-      <span>{strings.sash.repeat(5)}</span>
-      <span>{strings.sash.repeat(5)}</span>
-    </div>
-  </div>
+  <p class="masthead__lead">{strings.lead}</p>
 </section>
 
+<!-- The sash as the locker-room rail: steady marquee, paused on hover, pausable (WCAG 2.2.2). -->
+<div class="rail" data-rail>
+  <div class="rail__band" aria-hidden="true">
+    <div class="rail__track">
+      <span>{strings.sash.repeat(3)}</span>
+      <span>{strings.sash.repeat(3)}</span>
+    </div>
+  </div>
+  <button
+    type="button"
+    class="rail__toggle"
+    aria-pressed="false"
+    data-rail-toggle
+  >
+    <span class="rail__icon" aria-hidden="true"></span>
+    <span class="rail__label">{strings.sashPause}</span>
+  </button>
+</div>
+
+<div class="room">
+  <h2 class="room__title">{strings.room}</h2>
+  <p class="room__tally">{tally}</p>
+</div>
+
+<script>
+  const rail = document.querySelector<HTMLElement>('[data-rail]');
+  const toggle = rail?.querySelector<HTMLButtonElement>('[data-rail-toggle]');
+  toggle?.addEventListener('click', () => {
+    const paused = toggle.getAttribute('aria-pressed') !== 'true';
+    toggle.setAttribute('aria-pressed', String(paused));
+    rail?.toggleAttribute('data-paused', paused);
+  });
+</script>
+
 <style>
+  /* ——— Hero ——— */
   .masthead {
-    position: relative;
-    isolation: isolate;
-    overflow: clip;
-    padding: 0.5rem var(--gutter) 0;
-    background: var(--c-red);
-    color: var(--c-white);
-
-    /* Light grain, local to the band (no fixed full-page layer). */
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      opacity: 0.09;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 160px 160px;
-    }
-  }
-
-  .masthead__bigstar {
-    position: absolute;
-    z-index: -1;
-    inset-block-start: -12%;
-    inset-inline-end: -14%;
-    inline-size: min(70vw, 34rem);
-    fill: none;
-    stroke: var(--c-white);
-    stroke-width: 0.14;
-    opacity: 0.2;
-    animation: star-in 1400ms var(--ease-out) 200ms both;
-  }
-
-  .masthead__inner {
-    container-type: inline-size;
     display: grid;
-    gap: 0.6rem;
+    gap: 0.9rem;
+    padding: clamp(1.25rem, 4vw, 3rem) var(--gutter) clamp(1.5rem, 4vw, 2.75rem);
+    color: var(--c-white);
   }
 
   .masthead__eyebrow {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.5em;
     margin: 0;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
 
     svg {
-      inline-size: 1.1em;
-      block-size: 1.1em;
-      fill: var(--c-white);
-      animation: star-in 900ms var(--ease-out) 300ms both;
+      inline-size: 0.95em;
+      fill: currentColor;
     }
   }
 
+  .masthead__row {
+    container-type: inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.25rem 1.25rem;
+  }
+
   .masthead__title {
+    position: relative;
     margin: 0;
     font-family: var(--font-display);
-    font-size: min(13.4cqi, 9.5rem);
+    /* „KOLEKCJA” at 112% stretch is ~6.4em wide: cap it to the row width (15cqi ≈ 96%)
+       so it never overflows. */
+    font-size: min(clamp(3.2rem, 1rem + 12vw, 11rem), 15cqi);
+    font-weight: 900;
+    font-stretch: 112%;
     line-height: 0.82;
+    letter-spacing: -0.02em;
     text-transform: uppercase;
     white-space: nowrap;
   }
 
-  .masthead__word {
-    display: inline-flex;
-  }
-
-  /* The ghost reserves the final (wide, black) width, so the stretch animation never shifts layout. */
-  .ch {
-    position: relative;
-    display: inline-block;
-  }
-
-  .ghost,
-  .glyph {
-    font-weight: 900;
-    font-stretch: 125%;
-  }
-
-  .ghost {
+  .masthead__ghost {
     visibility: hidden;
   }
 
-  .glyph {
+  .masthead__word {
     position: absolute;
     inset: 0;
-    display: grid;
-    place-items: center;
-    animation: punch 720ms cubic-bezier(0.2, 1.25, 0.35, 1) calc(140ms + var(--i) * 55ms) both;
-  }
 
-  .masthead__row {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: end;
-    gap: 0.4rem 1rem;
-    padding-block-end: 0.25rem;
+    @media (prefers-reduced-motion: no-preference) {
+      animation: kolekcja-title-in 1.1s var(--ease-out) both;
+    }
   }
 
   .masthead__count {
     display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
+    align-items: end;
+    gap: 0.5rem;
     margin: 0;
-    font-family: var(--font-display);
-    line-height: 0.9;
     view-transition-name: collection-count;
   }
 
   .masthead__num {
-    font-size: clamp(2.6rem, 12cqi, 5.5rem);
+    font-family: var(--font-display);
+    font-size: min(clamp(3.2rem, 1rem + 12vw, 11rem), 15cqi);
     font-weight: 900;
-    font-stretch: 70%;
+    font-stretch: 125%;
     font-variant-numeric: tabular-nums;
-    animation: num-in 900ms var(--ease-out) 600ms both;
+    line-height: 0.82;
+    color: transparent;
+    -webkit-text-stroke: clamp(1px, 0.25vw, 2.5px) var(--c-white);
   }
 
   .masthead__unit {
+    padding-block-end: 0.35em;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.1em;
+    line-height: 1.35;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-  }
-
-  .masthead__copy {
-    display: grid;
-    gap: 0.3rem;
-    justify-self: end;
-    max-inline-size: 34ch;
   }
 
   .masthead__lead {
-    display: none;
-    margin: 0;
+    max-inline-size: 46ch;
+    margin: 0.4rem 0 0;
     font-size: var(--fs-sm);
-    line-height: 1.35;
+    line-height: 1.55;
   }
 
-  .masthead__tally {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.08em;
-    line-height: 1.5;
-    text-transform: uppercase;
-    text-align: end;
-    opacity: 0.85;
-  }
-
-  /* White diagonal sash with a slow terrace chant. */
-  .masthead__sash {
+  /* ——— Rail: the white sash as a steady marquee ——— */
+  .rail {
     position: relative;
-    z-index: 2;
     display: flex;
-    align-items: center;
-    inline-size: 120%;
-    margin: 1.1rem -10% -0.6rem;
-    block-size: 2.4rem;
-    overflow: hidden;
+    align-items: stretch;
+    border-block: 3px solid var(--c-white);
     background: var(--c-white);
-    color: var(--c-red);
-    transform: rotate(-2.4deg);
-    transform-origin: center;
-    animation: sash-in 900ms var(--ease-out) 650ms both;
+    box-shadow:
+      0 0.35rem 0 rgb(0 0 0 / 0.14),
+      0 1.2rem 2rem -0.8rem rgb(0 0 0 / 0.35);
   }
 
-  .masthead__track {
+  .rail__band {
+    flex: 1;
+    min-inline-size: 0;
+    overflow: hidden;
+    /* Thin red pinstripes – the white sash with its red edges. */
+    background: linear-gradient(var(--c-red) 0 2px, transparent 2px calc(100% - 2px), var(--c-red) calc(100% - 2px));
+    mask: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  }
+
+  .rail__track {
     display: flex;
-    flex: none;
     inline-size: max-content;
-    animation: chant 70s linear infinite;
+    padding-block: 0.55rem 0.5rem;
+    font-family: var(--font-display);
+    font-size: clamp(0.95rem, 0.8rem + 0.8vw, 1.5rem);
+    font-weight: 800;
+    font-stretch: 85%;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--c-red);
 
     span {
-      flex: none;
-      padding-inline-end: 0.5rem;
-      font-family: var(--font-mono);
-      font-size: var(--fs-xs);
-      font-weight: 700;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      white-space: pre;
+      padding-inline-end: 0.3em;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: kolekcja-rail 90s linear infinite;
     }
   }
 
-  @media (min-width: 48rem) {
-    .masthead {
-      padding-block-start: 1rem;
-    }
+  .rail[data-paused] .rail__track {
+    animation-play-state: paused;
+  }
 
-    .masthead__inner {
-      gap: 0.9rem;
-    }
-
-    .masthead__lead {
-      display: block;
-    }
-
-    .masthead__sash {
-      block-size: 3rem;
-      margin-block-start: 1.6rem;
+  /* Hover pause for real pointers only – a sticky :hover after a tap must not freeze it. */
+  @media (hover: hover) and (pointer: fine) {
+    .rail:hover .rail__track {
+      animation-play-state: paused;
     }
   }
 
-  @keyframes punch {
+  .rail__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: none;
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+    justify-content: center;
+    padding: 0 0.85rem;
+    border: 0;
+    border-inline-start: 2px solid var(--c-red);
+    background: var(--c-white);
+    color: var(--c-red-deep);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--c-ink);
+      outline-offset: -4px;
+    }
+
+    /* Nothing moves with reduced motion – no control needed. */
+    @media (prefers-reduced-motion: reduce) {
+      display: none;
+    }
+  }
+
+  /* Pause = two bars, play = triangle. */
+  .rail__icon {
+    inline-size: 0.7rem;
+    block-size: 0.75rem;
+    background: linear-gradient(90deg, currentColor 0 35%, transparent 35% 65%, currentColor 65%);
+  }
+
+  .rail__toggle[aria-pressed='true'] .rail__icon {
+    background: currentColor;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+  }
+
+  /* Icon-only on phones (still named), labelled from 40rem. */
+  .rail__label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+
+    @media (min-width: 40rem) {
+      position: static;
+      inline-size: auto;
+      block-size: auto;
+      overflow: visible;
+      clip-path: none;
+    }
+  }
+
+  /* ——— „Szatnia” head ——— */
+  .room {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    padding: clamp(2rem, 5vw, 3.5rem) var(--gutter) 0.6rem;
+  }
+
+  .room__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 900;
+    font-stretch: 75%;
+    line-height: 0.9;
+    text-transform: uppercase;
+  }
+
+  .room__tally {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* The title "breathes" out from condensed to wide once on load. */
+  @keyframes kolekcja-title-in {
     from {
-      opacity: 0;
-      transform: translateY(40%) scaleY(1.3);
       font-stretch: 62%;
-      font-weight: 300;
-    }
-    55% {
-      opacity: 1;
-    }
-    to {
-      opacity: 1;
-      transform: none;
-      font-stretch: 125%;
-      font-weight: 900;
-    }
-  }
-
-  @keyframes num-in {
-    from {
       opacity: 0;
-      font-stretch: 125%;
-      font-weight: 300;
     }
   }
 
-  @keyframes star-in {
-    from {
-      opacity: 0;
-      transform: rotate(-150deg) scale(0.3);
-    }
-  }
-
-  @keyframes sash-in {
-    from {
-      transform: translateX(-105%) rotate(-2.4deg);
-    }
-  }
-
-  @keyframes chant {
+  @keyframes kolekcja-rail {
     to {
-      transform: translateX(-50%);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .glyph,
-    .masthead__num,
-    .masthead__bigstar,
-    .masthead__eyebrow svg,
-    .masthead__sash,
-    .masthead__track {
-      animation: none;
+      translate: -50% 0;
     }
   }
 </style>
