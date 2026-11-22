@@ -59,7 +59,7 @@
   --dur: 450ms;
   --dur-slow: 900ms;
 
-  /* Floating site header (SiteHeader.astro). Mobile first; bumped at 48rem below. */
+  /* Site header (SiteHeader.astro): floating pill on mobile, full-width strip from 48rem. */
   --hdr-h: 3.5rem;
   --hdr-inset: 0.75rem;
   --hdr-top: max(var(--hdr-inset), env(safe-area-inset-top, 0px));
@@ -69,8 +69,11 @@
   --hdr-offset: calc(var(--hdr-top) + var(--hdr-h) + 0.375rem);
 
   @media (min-width: 48rem) {
-    --hdr-h: 3.75rem;
+    --hdr-h: 4.5rem;
     --hdr-inset: 1rem;
+    /* Full-width strip flush with the top edge (no floating inset). */
+    --hdr-top: env(safe-area-inset-top, 0px);
+    --hdr-space: calc(var(--hdr-top) + var(--hdr-h));
   }
 }
 

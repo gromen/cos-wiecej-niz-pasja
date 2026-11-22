@@ -59,7 +59,9 @@ const ogImageUrl = ogImage ? absolute(ogImage) : undefined;
     <meta property="og:locale" content={lang === 'pl' ? 'pl_PL' : 'en_GB'} />
     <meta name="theme-color" content={themeColor} />
     <link rel="preload" href={archivoWdth} as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{title}</title>
     <slot name="head" />
   </head>

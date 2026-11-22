@@ -3,7 +3,9 @@
  * Shared floating header (Trybuna language). Owned by the main session –
  * page agents should not edit it; restyle per page via the `tone` prop.
  *
- *  - A fixed, inset, rounded glass bar: hides on scroll down (past 80px), returns on scroll up.
+ *  - <48rem: a fixed, inset, rounded glass bar. ≥48rem: a full-width strip flush with the top,
+ *    transparent over the top of the page (`.is-top`), glass + hairline once scrolled.
+ *    Both hide on scroll down (past 80px) and return on scroll up.
  *  - ≥48rem: inline links. <48rem: „Menu” button → full-screen modal <dialog> (focus trap,
  *    Esc, inert page come free with showModal(); a popover would leave the page interactive).
  *  - Height/offset tokens (--hdr-*) live in tokens.css so pages and sticky UI can clear the bar.
@@ -64,7 +66,7 @@ const star = '12,1.5 14.6,8.9 22.5,9.1 16.2,13.9 18.5,21.5 12,17 5.5,21.5 7.8,13
   );
 </script>
 
-<header class="site-header" data-tone={tone} data-site-header>
+<header class="site-header is-top" data-tone={tone} data-site-header>
   <a class="brand" href="/">
     <svg class="brand__star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <polygon points={star}></polygon>
@@ -245,13 +247,32 @@ const star = '12,1.5 14.6,8.9 22.5,9.1 16.2,13.9 18.5,21.5 12,17 5.5,21.5 7.8,13
       text-decoration: none;
     }
 
+    /* Desktop: a full-width strip blended into the page – no inset pill. Transparent over the
+       top of the page, a glass strip with a hairline once scrolled. */
     @media (min-width: 48rem) {
-      padding-inline: 1.25rem 0.6rem;
-      border-radius: 1.1rem;
+      inset-block-start: 0;
+      inset-inline: 0;
+      max-inline-size: none;
+      block-size: calc(var(--hdr-h) + env(safe-area-inset-top, 0px));
+      padding: env(safe-area-inset-top, 0px) var(--gutter) 0;
+      border: 0;
+      border-block-end: 1px solid var(--hdr-border);
+      border-radius: 0;
+      box-shadow: none;
+
+      &.is-top {
+        border-block-end-color: transparent;
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      transition: translate 420ms var(--ease-out);
+      transition:
+        translate 420ms var(--ease-out),
+        background-color var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out);
       animation: hdr-in 700ms var(--ease-out) 120ms both;
 
       /* Fully out of view: its own height + the inset above it + room for the shadow. */
@@ -388,8 +409,72 @@ const star = '12,1.5 14.6,8.9 22.5,9.1 16.2,13.9 18.5,21.5 12,17 5.5,21.5 7.8,13
       border-inline-start: 1px solid var(--hdr-border);
     }
 
+    /* Desktop: links spread across the strip – pages in the middle, socials at the far end;
+       plain text with an underline for the current page instead of pills. */
     @media (min-width: 48rem) {
       display: block;
+      flex: 1;
+
+      ul {
+        gap: clamp(1.25rem, 3vw, 3rem);
+      }
+
+      a {
+        position: relative;
+        padding-inline: 0;
+        border-radius: 0;
+
+        &::after {
+          content: '';
+          position: absolute;
+          inset-inline: 0;
+          inset-block-end: 0.45rem;
+          block-size: 2px;
+          background: currentColor;
+          scale: 0 1;
+          transform-origin: left;
+          transition: scale var(--dur-fast) var(--ease-out);
+        }
+
+        &:hover {
+          background: none;
+
+          &::after {
+            scale: 1 1;
+          }
+        }
+
+        &[aria-current='page'] {
+          background: none;
+          color: inherit;
+
+          &::after {
+            scale: 1 1;
+          }
+        }
+
+        &.is-section:not(:focus-visible) {
+          box-shadow: none;
+        }
+
+        &.is-section {
+
+          &::after {
+            scale: 1 1;
+            opacity: 0.55;
+          }
+        }
+      }
+
+      li:first-child {
+        margin-inline-start: auto;
+      }
+
+      .links__first-social {
+        margin-inline-start: auto;
+        padding-inline-start: 0;
+        border-inline-start: 0;
+      }
     }
 
     /* No modal dialog support: keep the page links inline on mobile (socials only from 48rem). */
@@ -880,8 +965,14 @@ const star = '12,1.5 14.6,8.9 22.5,9.1 16.2,13.9 18.5,21.5 12,17 5.5,21.5 7.8,13
     else delete root.dataset.header;
   };
 
+  /** Desktop: the full-width bar is see-through over the top of the page, glass once scrolled. */
+  const setTop = (): void => {
+    header?.classList.toggle('is-top', scrollY <= 8);
+  };
+
   const update = (): void => {
     ticking = false;
+    setTop();
     const maxY = Math.max(0, root.scrollHeight - innerHeight);
     // Rubber-band bounce past the bottom (iOS) reports a scrollY beyond the end and back: ignore it.
     if (scrollY + innerHeight >= root.scrollHeight && scrollY > SHOW_ABOVE) {
@@ -907,6 +998,7 @@ const star = '12,1.5 14.6,8.9 22.5,9.1 16.2,13.9 18.5,21.5 12,17 5.5,21.5 7.8,13
   const resync = (): void => {
     lastY = Math.max(0, scrollY);
     delete header?.dataset.instant;
+    setTop();
     setHidden(false);
   };
 
