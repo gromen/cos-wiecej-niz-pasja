@@ -24,3 +24,10 @@ pnpm-debug.log*
 .idea/
 .wrangler/
 .venv-photos/
+
+# local prototypes (not deployed)
+src/pages/proto/
+src/components/proto-a/
+src/components/proto-b/
+src/components/proto-c/
+src/components/collection/proto-filters/
