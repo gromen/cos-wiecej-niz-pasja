@@ -159,7 +159,7 @@ const { strings } = Astro.props;
   /* Restoring a filtered view from the URL: hide everything that shows unfiltered numbers –
      grid, filter bar (count, chips) and the masthead count – for the few ms before the runtime
      applies the query (no flash, no CLS). Failsafe reveal if the runtime never removes the flag. */
-  :root[data-restore] :is([data-results], [data-bar], [data-facets-home], [data-count-shown], [data-count-label]) {
+  :root[data-restore] :is([data-results], [data-bar], [data-c-rail], [data-count-shown], [data-count-label]) {
     visibility: hidden;
     animation: restore-failsafe 0s 1.5s forwards;
   }

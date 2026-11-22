@@ -11,8 +11,8 @@
  *    afterwards every shirt gets its static name back (the detail-page morph needs it).
  *  - Photo cards keep their back in a <template>: it is cloned on first hover / focus /
  *    flip tap, and the card flips only once that image has decoded.
- *  - On phones the facet panel is moved into a <dialog> bottom sheet (and back to its inline
- *    rows afterwards); changes made there are applied (with the transition) once it has closed.
+ *  - Changes made in the „Wszystkie filtry” <dialog> are applied (with the transition) once
+ *    it has closed.
  */
 import { matchesTokens, plural, tokenize } from './search';
 import type { ClientStrings } from './strings';
@@ -71,11 +71,7 @@ if (root && form && grid) {
 
   const bar = root.querySelector<HTMLElement>('[data-bar]');
   const results = root.querySelector<HTMLElement>('[data-results]');
-  const facetsHome = root.querySelector<HTMLElement>('[data-facets-home]');
-  const facets = root.querySelector<HTMLElement>('[data-facets]');
   const sheet = root.querySelector<HTMLDialogElement>('[data-sheet]');
-  const sheetBody = root.querySelector<HTMLElement>('[data-sheet-body]');
-  const openButton = root.querySelector<HTMLButtonElement>('[data-sheet-open]');
   const applyButton = root.querySelector<HTMLButtonElement>('[data-apply]');
   const emptyState = root.querySelector<HTMLElement>('[data-empty-state]');
   const live = root.querySelector<HTMLElement>('[data-live]');
@@ -405,76 +401,15 @@ if (root && form && grid) {
         // The empty state disappears: land on the results heading (not the search field –
         // that would pop the iOS keyboard over the freshly restored grid).
         resultsTitle?.focus({ preventScroll: true });
-      } else if (button.hidden) {
-        // The bar's „Wyczyść” hides itself once nothing is filtered – don't strand focus on it.
+      } else if (button.hidden && !button.closest('[data-c-rail]')) {
+        // A „Wyczyść” that hides itself once nothing is filtered – don't strand focus on it.
+        // (The rail's own button is handled by quick-filters.ts, which keeps focus on the rail.)
         searchInput?.focus({ preventScroll: true });
       }
     }),
   );
 
-  /* ——— Sheet (phones) / jump to chips (desktop) ——— */
-
-  /** Moving a subtree blurs whatever was focused inside it: put focus back if it survived. */
-  const moveFacets = (target: HTMLElement): void => {
-    if (!facets || facets.parentElement === target) return;
-    const focused = document.activeElement;
-    target.append(facets);
-    if (focused instanceof HTMLElement && focused !== document.activeElement && focused.isConnected && facets.contains(focused)) {
-      focused.focus({ preventScroll: true });
-    }
-  };
-
-  const homeFacets = (): void => {
-    if (facetsHome) moveFacets(facetsHome);
-    // Release the height held while the chips were in the sheet.
-    facetsHome?.style.removeProperty('min-block-size');
-  };
-
-  const syncOpenButton = (): void => {
-    if (!openButton) return;
-    if (desktop.matches) {
-      openButton.removeAttribute('aria-haspopup');
-      openButton.setAttribute('aria-controls', 'collection-facets');
-    } else {
-      openButton.setAttribute('aria-haspopup', 'dialog');
-      openButton.setAttribute('aria-controls', 'collection-sheet');
-    }
-  };
-
-  openButton?.addEventListener('click', () => {
-    if (desktop.matches) {
-      if (!facetsHome) return;
-      const first = facetsHome.querySelector<HTMLInputElement>('input');
-      // `.facets-home` has a scroll-margin clearing the sticky bar; focus only once the
-      // chips are actually in view (focusing mid-scroll would park focus out of sight).
-      const focusFirst = (): void => first?.focus({ preventScroll: true });
-      if (reduceMotion.matches) {
-        facetsHome.scrollIntoView({ behavior: 'instant', block: 'start' });
-        focusFirst();
-        return;
-      }
-      let settled = false;
-      const settle = (): void => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(fallback);
-        window.removeEventListener('scrollend', settle);
-        focusFirst();
-      };
-      const fallback = window.setTimeout(settle, 900); // no `scrollend` (Safari < 26) or no scroll at all
-      window.addEventListener('scrollend', settle);
-      facetsHome.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    if (!sheet || !sheetBody || !facets) return;
-    if (facets.parentElement !== sheetBody) {
-      // The chip rows are also shown inline on phones: hold their height while they live in
-      // the sheet, so nothing below them jumps (and the scroll position stays put).
-      if (facetsHome) facetsHome.style.minBlockSize = `${facetsHome.offsetHeight}px`;
-      moveFacets(sheetBody);
-    }
-    sheet.showModal();
-  });
+  /* ——— „Wszystkie filtry” dialog (opened by quick-filters.ts) ——— */
 
   root.querySelectorAll<HTMLButtonElement>('[data-sheet-close]').forEach((button) =>
     button.addEventListener('click', () => sheet?.close()),
@@ -485,30 +420,23 @@ if (root && form && grid) {
     if (event.target === sheet) sheet.close();
   });
 
-  const SHEET_SETTLE = 450; // ms – never wait longer for the slide-out to report finished
+  const SHEET_SETTLE = 650; // ms (> --dur 450ms) – never wait longer for the slide-out to report finished
 
   sheet?.addEventListener('close', () => {
-    // Phones: return focus to „Filtry” explicitly (WebKit does not always restore it).
-    if (!desktop.matches) openButton?.focus({ preventScroll: true });
-    // Let the sheet slide away first – emptying it (or a transition starting under it)
-    // would freeze it mid-air. Then the chips go back to their inline rows.
+    // Let the sheet slide away first – a transition starting under it would freeze it
+    // mid-air. Then apply whatever was changed in it.
     requestAnimationFrame(() => {
       const finished = Promise.allSettled(sheet.getAnimations({ subtree: true }).map((animation) => animation.finished));
       const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, SHEET_SETTLE));
       Promise.race([finished, timeout]).then(() => {
         if (sheet.open) return;
-        homeFacets();
         if (pending) apply({ animate: true });
       });
     });
   });
 
   desktop.addEventListener('change', () => {
-    syncOpenButton();
-    if (desktop.matches) {
-      sheet?.close();
-      homeFacets();
-    }
+    if (desktop.matches) sheet?.close();
   });
 
   /* ——— Cross-document transition to a detail page ——— */
@@ -620,22 +548,9 @@ if (root && form && grid) {
     card.toggleAttribute('data-flipped', flipped);
   });
 
-  /* ——— Chip rows on phones: fade the right edge while more chips hide off-screen ——— */
-
-  const rows = [...root.querySelectorAll<HTMLElement>('.chips, .options')];
-  const markMore = (row: HTMLElement): void => {
-    row.toggleAttribute('data-more', row.scrollWidth - row.clientWidth - row.scrollLeft > 1);
-  };
-  const rowObserver = new ResizeObserver((entries) => entries.forEach((entry) => markMore(entry.target as HTMLElement)));
-  rows.forEach((row) => {
-    rowObserver.observe(row);
-    row.addEventListener('scroll', () => markMore(row), { passive: true });
-  });
-
   /* ——— Init: restore from the URL ——— */
 
   try {
-    syncOpenButton();
     writeControls(new URLSearchParams(location.search));
     apply({ animate: false, announce: false, scroll: false });
   } finally {

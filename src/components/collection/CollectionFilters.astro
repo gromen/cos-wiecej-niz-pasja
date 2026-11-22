@@ -1,41 +1,75 @@
 ---
 /**
- * Filter UI. Renders three siblings (must be direct children of the element that also
- * wraps the grid, so the sticky bar stays stuck through the whole list):
- *  - `.bar`         sticky: search, count, reset, „Filtry” button
- *  - `.facets-home` chip groups + toggles + sort – one row per group (on phones each row
- *                   scrolls sideways inside itself)
- *  - `<dialog>`     bottom sheet on phones – the runtime moves `.facets` into it on open
- *                   and back home once it has closed
- * All controls belong to one <form> via the `form` attribute, wherever they live.
+ * Collection filters – „Szybkie filtry” (Airbnb / Google Shopping style).
+ * The real runtime (collection.ts) drives filtering, URL sync, counts and the live region:
+ *  - `.filters-bar`   [data-bar] sticky: search (collapses to an icon on small phones), live count,
+ *               sort as an icon menu (the one and only `sort` select), „Wszystkie filtry” + badge
+ *  - `.filters-rail`  the white sash with ONE scrolling row of quick chips – aria-pressed buttons
+ *               that toggle the real checkboxes in the dialog (see quick-filters.ts)
+ *  - `<dialog>` [data-sheet] every group with live counts + „Pokaż N koszulek” [data-apply]:
+ *               bottom sheet on phones, centred modal from 48rem. collection.ts already defers
+ *               the grid update while it is open and applies it on close.
+ * All inputs belong to one <form> via the `form` attribute (same names / values as the page).
  */
 import type { Facet } from './model';
 import type { CollectionStrings } from './strings';
+import { plural } from './search';
 
 interface Props {
   strings: CollectionStrings['filters'];
+  quick: CollectionStrings['quick'];
   facets: Facet[];
   total: number;
   signedCount: number;
   describedCount: number;
+  forms: CollectionStrings['client']['forms'];
 }
 
-const { strings, facets, total, signedCount, describedCount } = Astro.props;
+const { strings, quick, facets, total, signedCount, describedCount, forms } = Astro.props;
 const FORM = 'collection-filters';
 const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortOptions, string][];
+
+const values = (group: Facet['group']): Set<string> =>
+  new Set(facets.find((facet) => facet.group === group)?.options.map((option) => option.value) ?? []);
+const eras = values('era');
+const kinds = values('kind');
+const colors = facets.find((facet) => facet.group === 'color')?.options ?? [];
+
+interface Quick {
+  label: string;
+  star?: boolean;
+  targets: [string, string][];
+  swatch?: string;
+}
+
+/** Quick-chip groups (a star separates them on the rail); options missing from the data are dropped. */
+const groups: Quick[][] = [
+  [
+    { label: quick.signed, star: true, targets: [['signed', '1']] },
+    { label: quick.described, targets: [['described', '1']] },
+  ],
+  quick.decades
+    .map(({ label, eras: list }) => ({
+      label,
+      targets: list.filter((era) => eras.has(era)).map((era): [string, string] => ['era', era]),
+    }))
+    .filter((chip) => chip.targets.length > 0),
+  quick.kinds.filter(({ kind }) => kinds.has(kind)).map(({ label, kind }) => ({ label, targets: [['kind', kind]] })),
+  colors.map((option) => ({ label: option.label, targets: [['color', option.value]], swatch: option.swatch })),
+].filter((group) => group.length > 0);
 ---
 
-<div class="bar" data-bar>
-  <search class="bar__inner" aria-label={strings.region}>
-    <form id={FORM} class="bar__form" autocomplete="off" data-form>
-      <label class="field">
+<div class="filters-bar" data-bar>
+  <search class="filters-bar__inner" aria-label={strings.region}>
+    <form id={FORM} class="filters-bar__form" autocomplete="off" data-form>
+      <label class="filters-field">
         <span class="visually-hidden">{strings.search}</span>
-        <svg class="field__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <svg class="filters-field__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <circle cx="10.5" cy="10.5" r="6.5"></circle>
           <path d="M15.5 15.5 21 21"></path>
         </svg>
         <input
-          class="field__input"
+          class="filters-field__input"
           type="search"
           name="q"
           placeholder={strings.searchPlaceholder}
@@ -46,20 +80,30 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
         />
       </label>
 
-      <p class="bar__count" aria-hidden="true">
-        <span data-count-shown>{total}</span><span class="bar__total">/{total}</span>
+      <p class="filters-count" aria-hidden="true">
+        <b data-count-shown>{total}</b> <span data-count-label>{plural(total, forms)}</span>
       </p>
 
-      <button type="button" class="bar__reset" data-reset hidden>{strings.reset}</button>
+      <label class="filters-sort" data-c-sort>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"></path>
+        </svg>
+        <span class="filters-sort__value" aria-hidden="true" data-c-sort-value>{sorts[0]?.[1]}</span>
+        <span class="filters-sort__dot" aria-hidden="true"></span>
+        <select name="sort" form={FORM} aria-label={strings.sort}>
+          {sorts.map(([value, label], i) => <option value={value} selected={i === 0}>{label}</option>)}
+        </select>
+      </label>
 
-      <button type="button" class="bar__open" data-sheet-open>
+      <button type="button" class="filters-all" aria-haspopup="dialog" aria-controls="collection-sheet" data-c-open>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M3 7h11M18 7h3M3 17h4M11 17h10"></path>
           <circle cx="16" cy="7" r="2.2"></circle>
           <circle cx="9" cy="17" r="2.2"></circle>
         </svg>
-        <span class="bar__open-label">{strings.open}</span>
-        <span class="bar__badge" data-active-count hidden>
+        <span class="filters-all__long">{quick.all}</span>
+        <span class="filters-all__short" aria-hidden="true">{quick.allShort}</span>
+        <span class="filters-all__badge" data-active-count hidden>
           <span data-active-num>0</span><span class="visually-hidden"> {strings.activeCount}</span>
         </span>
       </button>
@@ -67,8 +111,76 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
   </search>
 </div>
 
-<div class="facets-home" id="collection-facets" data-facets-home>
-  <div class="facets" data-facets>
+<!-- The quick row on the white sash: a ticker of the most-used filters. -->
+<div class="filters-rail" data-c-rail>
+  <p class="filters-rail__tag" id="filters-rail-label">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <polygon points="12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6"></polygon>
+    </svg>
+    <span class="filters-rail__tag-long">{quick.rail}</span>
+    <span class="visually-hidden filters-rail__tag-sr">{quick.railShort}</span>
+  </p>
+  <!-- Outside the scroller: appearing / hiding never shifts the chips under the pointer. -->
+  <div class="filters-rail__clear">
+    <button type="button" class="filters-chip filters-chip--clear" data-reset hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+      <span class="filters-chip--clear__label">{quick.clear}</span>
+    </button>
+  </div>
+  <div class="filters-rail__track">
+    <button type="button" class="filters-rail__arrow filters-rail__arrow--prev" tabindex="-1" data-c-prev>
+      <svg viewBox="0 0 24 24" focusable="false"><path d="m15 5-7 7 7 7"></path></svg>
+      <span class="visually-hidden">{quick.prev}</span>
+    </button>
+    <div class="filters-rail__scroller" role="group" aria-labelledby="filters-rail-label" data-c-scroller>
+      {
+        groups.map((group, g) => (
+          <>
+            {g > 0 && <span class="filters-sep" aria-hidden="true">★</span>}
+            {group.map((chip) =>
+              chip.swatch ? (
+                <button
+                  type="button"
+                  class="filters-chip filters-chip--dot"
+                  aria-pressed="false"
+                  title={`${quick.colorPrefix} ${chip.label}`}
+                  data-c-quick={JSON.stringify(chip.targets)}
+                >
+                  <span class="filters-chip__swatch" style={`--sw:${chip.swatch}`} aria-hidden="true" />
+                  <span class="filters-chip__label">
+                    <span class="visually-hidden">{quick.colorPrefix} </span>
+                    {chip.label}
+                  </span>
+                </button>
+              ) : (
+                <button type="button" class="filters-chip" aria-pressed="false" data-c-quick={JSON.stringify(chip.targets)}>
+                  {chip.star && <span aria-hidden="true">★</span>}
+                  {chip.label}
+                  <svg class="filters-chip__x" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M7 7l10 10M17 7 7 17"></path>
+                  </svg>
+                </button>
+              ),
+            )}
+          </>
+        ))
+      }
+    </div>
+    <button type="button" class="filters-rail__arrow filters-rail__arrow--next" tabindex="-1" data-c-next>
+      <svg viewBox="0 0 24 24" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+      <span class="visually-hidden">{quick.next}</span>
+    </button>
+  </div>
+</div>
+
+<dialog id="collection-sheet" class="filters-sheet" aria-labelledby="filters-sheet-title" data-sheet closedby="any">
+  <div class="filters-sheet__head">
+    <h2 id="filters-sheet-title" class="filters-sheet__title">{quick.all}</h2>
+    <button type="button" class="filters-btn filters-sheet__close" data-sheet-close aria-label={strings.close}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+    </button>
+  </div>
+  <div class="filters-sheet__body">
     {
       facets.map((facet) => (
         <fieldset class="group">
@@ -88,60 +200,45 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
         </fieldset>
       ))
     }
-
-    <fieldset class="group group--options">
+    <fieldset class="group">
       <legend class="group__legend">{strings.groups.options}</legend>
-      <div class="options">
+      <div class="chips">
         <label class="switch">
           <input type="checkbox" role="switch" name="signed" value="1" form={FORM} />
-          <span class="switch__label">★ {strings.signed}</span>
+          <span><span aria-hidden="true">★ </span>{strings.signed}</span>
           <span class="chip__count" data-facet-count="signed">{signedCount}</span>
         </label>
         <label class="switch">
           <input type="checkbox" role="switch" name="described" value="1" form={FORM} />
-          <span class="switch__label">{strings.described}</span>
+          <span>{strings.described}</span>
           <span class="chip__count" data-facet-count="described">{describedCount}</span>
-        </label>
-        <label class="sort">
-          <span class="sort__label">{strings.sort}</span>
-          <select name="sort" form={FORM}>
-            {sorts.map(([value, label], i) => <option value={value} selected={i === 0}>{label}</option>)}
-          </select>
         </label>
       </div>
     </fieldset>
   </div>
-</div>
-
-<dialog id="collection-sheet" class="sheet" aria-labelledby="collection-sheet-title" data-sheet closedby="any">
-  <div class="sheet__head">
-    <h2 id="collection-sheet-title" class="sheet__title">{strings.sheetTitle}</h2>
-    <button type="button" class="sheet__close" data-sheet-close aria-label={strings.close}>
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg>
-    </button>
-  </div>
-  <div class="sheet__body" data-sheet-body></div>
-  <div class="sheet__foot">
-    <button type="button" class="btn btn--ghost" data-reset>{strings.reset}</button>
-    <button type="button" class="btn btn--primary" data-sheet-close data-apply>{strings.open}</button>
+  <div class="filters-sheet__foot">
+    <button type="button" class="filters-btn" data-reset>{strings.reset}</button>
+    <button type="button" class="filters-btn filters-btn--primary" data-sheet-close data-apply>{quick.all}</button>
   </div>
 </dialog>
 
 <style>
-  /* Without JS the grid simply lists everything – hide controls that could not work. */
-  :global(:root:not([data-js])) :is(.bar, .facets-home) {
+  /* Without JS the grid lists everything – hide controls that could not work. */
+  :global(:root:not([data-js])) :is(.filters-bar, .filters-rail) {
     display: none;
   }
 
-  /* ——— Sticky bar: search, count, reset, „Filtry” ——— */
-  .bar {
+  /* No page scroll behind the open modal / sheet. */
+  :global(html:has(.filters-sheet[open])) {
+    overflow: hidden;
+  }
+
+  /* ——— Sticky bar: search · count · sort · „Wszystkie filtry” ——— */
+  .filters-bar {
     position: sticky;
-    /* Parks just below the floating site header while it is shown (0 once it hides). */
     inset-block-start: var(--hdr-offset, 0px);
     z-index: 30;
-    container-type: scroll-state;
-    padding: 0.55rem var(--gutter);
-    /* Solid, no backdrop blur (cheap to scroll over 86 lockers). */
+    padding: 0.5rem var(--gutter);
     background: var(--c-red-deep);
     border-block: 1px solid var(--line);
     view-transition-name: collection-bar;
@@ -151,29 +248,32 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     }
   }
 
-  .bar__form {
+  .filters-bar__form {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     margin: 0;
 
     @media (min-width: 48rem) {
-      gap: 0.85rem;
+      gap: 0.75rem;
     }
   }
 
-  .field {
+  .filters-field {
     position: relative;
-    flex: 1;
+    flex: 1 1 0;
     min-inline-size: 0;
 
+    @media (prefers-reduced-motion: no-preference) {
+      transition: flex-basis var(--dur-fast) var(--ease-out), flex-grow var(--dur-fast) var(--ease-out);
+    }
+
     @media (min-width: 48rem) {
-      flex: 0 1 26rem;
-      margin-inline-end: auto;
+      flex: 0 1 24rem;
     }
   }
 
-  .field__icon {
+  .filters-field__icon {
     position: absolute;
     inset-block-start: 50%;
     inset-inline-start: 0.8rem;
@@ -186,7 +286,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     pointer-events: none;
   }
 
-  .field__input {
+  .filters-field__input {
     inline-size: 100%;
     block-size: 2.75rem;
     padding: 0 0.9rem 0 2.5rem;
@@ -194,11 +294,8 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     border-radius: 999px;
     background: rgb(0 0 0 / 0.16);
     color: var(--c-white);
-    /* ≥16px – no iOS zoom on focus. */
     font: 500 1rem/1 var(--font-body);
-    transition:
-      border-color var(--dur-fast),
-      background-color var(--dur-fast);
+    transition: border-color var(--dur-fast), background-color var(--dur-fast);
 
     &::placeholder {
       color: var(--fg-muted);
@@ -217,39 +314,160 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     }
   }
 
-  .bar__count {
+  .filters-count {
     display: none;
+    flex: 1 1 auto;
+    min-inline-size: 0;
     margin: 0;
+    overflow: hidden;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.06em;
-    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     white-space: nowrap;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
 
-    [data-count-shown] {
-      font-weight: 700;
+    b {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+  }
+
+  /* Small phones: an empty, unfocused search folds into a round icon; the count takes its place. */
+  @media (max-width: 29.99rem) {
+    .filters-field:not(:focus-within):has(.filters-field__input:placeholder-shown) {
+      flex: 0 0 2.75rem;
+
+      .filters-field__input {
+        padding: 0;
+        cursor: pointer;
+
+        &::placeholder {
+          color: transparent;
+        }
+      }
     }
 
-    @media (min-width: 48rem) {
+    .filters-bar__form:has(.filters-field:not(:focus-within) .filters-field__input:placeholder-shown) .filters-count {
+      display: block;
+    }
+
+    /* While typing, the search gets the room: sort steps aside visually but stays in the tab order. */
+    .filters-bar__form:has(.filters-field:focus-within) .filters-sort {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      min-inline-size: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .filters-count {
       display: block;
     }
   }
 
-  .bar__total {
-    color: var(--fg-muted);
+  /* Sort: an icon button that is really the native <select> (full menu on every platform). */
+  .filters-sort {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border: 1.5px solid var(--line-control);
+    border-radius: 999px;
+    color: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: border-color var(--dur-fast);
+
+    &:hover {
+      border-color: var(--c-white);
+    }
+
+    &:has(:focus-visible) {
+      outline: 2px solid var(--c-white);
+      outline-offset: 2px;
+    }
+
+    svg {
+      inline-size: 1.15rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    select {
+      position: absolute;
+      inset: 0;
+      inline-size: 100%;
+      block-size: 100%;
+      margin: 0;
+      opacity: 0;
+      font-size: 1rem;
+      cursor: pointer;
+      appearance: none;
+
+      option {
+        background: #6a0717;
+        color: var(--c-white);
+      }
+    }
+
+    @media (min-width: 64rem) {
+      padding-inline: 0.9rem;
+    }
   }
 
-  .bar__reset,
-  .bar__open,
-  .btn,
-  .sheet__close {
+  .filters-sort__value {
+    display: none;
+
+    @media (min-width: 64rem) {
+      display: inline;
+    }
+  }
+
+  /* A non-default order is a (small) active state too. */
+  .filters-sort__dot {
+    position: absolute;
+    inset-block-start: 0.3rem;
+    inset-inline-end: 0.3rem;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-white);
+    box-shadow: 0 0 0 2px var(--c-red-deep);
+    display: none;
+  }
+
+  .filters-sort[data-sorted] .filters-sort__dot {
+    display: block;
+  }
+
+  .filters-all,
+  .filters-btn {
     flex: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
     min-block-size: 2.75rem;
-    padding: 0 1rem;
+    padding: 0 0.95rem;
     border: 1.5px solid var(--line-control);
     border-radius: 999px;
     background: transparent;
@@ -259,11 +477,9 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    white-space: nowrap;
     cursor: pointer;
-    transition:
-      background-color var(--dur-fast),
-      border-color var(--dur-fast),
-      color var(--dur-fast);
+    transition: background-color var(--dur-fast), border-color var(--dur-fast);
 
     &:hover {
       border-color: var(--c-white);
@@ -283,18 +499,9 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     }
   }
 
-  .bar__reset {
-    display: none;
-
-    @media (min-width: 48rem) {
-      &:not([hidden]) {
-        display: inline-flex;
-      }
-    }
-  }
-
-  /* White pill on red – the primary action of the bar. */
-  .bar__open {
+  /* White pill – the bar's primary action. */
+  .filters-all,
+  .filters-btn--primary {
     border-color: var(--c-white);
     background: var(--c-white);
     color: var(--c-red-deep);
@@ -302,13 +509,42 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     &:hover {
       background: rgb(250 250 250 / 0.88);
     }
+  }
 
-    @media (min-width: 48rem) {
+  .filters-all {
+    margin-inline-start: auto;
+  }
+
+  /* „Filtry” below 24rem, „Wszystkie filtry” above; the accessible name is always the long one. */
+  .filters-all__long {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+
+    @media (min-width: 24rem) {
+      position: static;
+      inline-size: auto;
+      block-size: auto;
+      overflow: visible;
+      clip-path: none;
+    }
+  }
+
+  /* 320px phones: icon + badge only, so the live count keeps its room. */
+  .filters-all__short {
+    @media (max-width: 22.49rem) {
+      display: none;
+    }
+
+    @media (min-width: 24rem) {
       display: none;
     }
   }
 
-  .bar__badge {
+  .filters-all__badge {
     display: inline-grid;
     place-items: center;
     min-inline-size: 1.3rem;
@@ -317,7 +553,6 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     border-radius: 999px;
     background: var(--c-red-deep);
     color: var(--c-white);
-    font-weight: 700;
     letter-spacing: 0;
 
     &[hidden] {
@@ -325,53 +560,94 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     }
   }
 
-  /* ——— Facets: one row per group (label + red/white pill chips) ——— */
-  .facets-home {
-    padding: 0.9rem var(--gutter) clamp(1.75rem, 4vw, 2.75rem);
-    /* „Filtry” jumps here: land below the sticky bar (≈ 2.75rem control + padding + border). */
-    scroll-margin-block-start: calc(5rem + var(--hdr-offset, 0px));
+  /* ——— Rail: the white sash, chips riding on it like a ticker ——— */
+  .filters-rail {
+    --rail-ink: var(--c-red-deep);
+
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    margin-block: 0.9rem clamp(1.5rem, 4vw, 2.5rem);
+    border-block: 3px solid var(--c-white);
+    background: var(--c-white);
+    color: var(--rail-ink);
+    box-shadow:
+      0 0.35rem 0 rgb(0 0 0 / 0.14),
+      0 1.2rem 2rem -0.8rem rgb(0 0 0 / 0.35);
   }
 
-  .facets {
-    display: grid;
-    gap: 0.6rem;
-  }
-
-  .group {
-    min-inline-size: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  /* Floated, so the legend sits at the start of its chip row (a legend is never a flex item);
-     the chip row – a flex container – keeps clear of the float and takes the rest of the line. */
-  .group__legend {
-    float: inline-start;
+  .filters-rail__tag {
+    flex: none;
     display: flex;
     align-items: center;
-    inline-size: 5.25rem;
-    min-block-size: 2.5rem;
+    gap: 0.45rem;
     margin: 0;
-    padding: 0 0.5rem 0 0;
+    padding: 0 0.75rem 0 var(--gutter);
+    background: var(--c-red);
+    color: var(--c-white);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    letter-spacing: 0.14em;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
+    white-space: nowrap;
+    /* Ticker flag: the red tab ends in a notch. */
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.55rem) 50%, 100% 100%, 0 100%);
+    padding-inline-end: 1.1rem;
+
+    svg {
+      inline-size: 0.95rem;
+      fill: currentColor;
+    }
   }
 
-  /* Phones: a row scrolls sideways inside itself, bleeding to the screen edge – never wider than the page. */
-  .chips,
-  .options {
+  /* Phones: star only (the group keeps its full name for screen readers). */
+  .filters-rail__tag-long {
+    display: none;
+
+    @media (min-width: 40rem) {
+      display: inline;
+    }
+  }
+
+  .filters-rail__tag-sr {
+    @media (min-width: 40rem) {
+      display: none;
+    }
+  }
+
+  .filters-rail__track {
+    position: relative;
+    flex: 1;
+    min-inline-size: 0;
+    display: flex;
+  }
+
+  .filters-rail__scroller {
+    --fade-start: 0px;
+    --fade-end: 0px;
+
+    position: relative; /* offsetParent for the chips (quick-filters.ts scroll-into-view maths) */
+    flex: 1;
+    min-inline-size: 0;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    margin-inline-end: calc(var(--gutter) * -1);
-    padding-inline-end: var(--gutter);
+    gap: 0.35rem;
+    padding: 0.5rem var(--gutter) 0.5rem 0.6rem;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.6rem;
     scrollbar-width: none;
+    /* Red pinstripes top and bottom – the sash with its red edges. */
+    background: linear-gradient(var(--c-red) 0 2px, transparent 2px calc(100% - 2px), var(--c-red) calc(100% - 2px));
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent 100%
+    );
 
     &::-webkit-scrollbar {
       display: none;
@@ -381,19 +657,404 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       scroll-snap-align: start;
     }
 
-    /* More chips off to the right (set by collection.ts while the row overflows and is not
-       scrolled to its end): fade the edge as a cue. */
-    &[data-more] {
-      mask-image: linear-gradient(90deg, #000 calc(100% - 3.5rem), transparent);
+    &[data-more-start] {
+      --fade-start: 2rem;
+    }
+
+    &[data-more-end] {
+      --fade-end: 3rem;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  .filters-sep {
+    flex: none;
+    padding-inline: 0.15rem;
+    color: var(--c-red);
+    font-size: 0.7rem;
+    line-height: 1;
+  }
+
+  .filters-chip {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-block-size: 2.25rem;
+    padding: 0 0.85rem;
+    border: 1.5px solid var(--c-red);
+    border-radius: 999px;
+    background: var(--c-white);
+    color: var(--rail-ink);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    font-stretch: 90%;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+
+    &:hover {
+      background: #fbe7ea;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--c-ink);
+      outline-offset: 2px;
+    }
+
+    /* Zero results with the other filters kept: still usable, clearly secondary. */
+    &[data-empty]:not([aria-pressed='true']) {
+      border-style: dashed;
+      color: rgb(142 10 32 / 0.85);
+    }
+
+    &[aria-pressed='true'] {
+      background: var(--c-red);
+      border-color: var(--c-red);
+      color: var(--c-white);
+
+      &:hover {
+        background: var(--c-red-deep);
+      }
+    }
+  }
+
+  .filters-chip__x {
+    display: none;
+    inline-size: 0.85rem;
+    margin-inline-end: -0.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+
+    [aria-pressed='true'] > & {
+      display: block;
+    }
+  }
+
+  .filters-rail__clear {
+    flex: none;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(var(--c-red) 0 2px, transparent 2px calc(100% - 2px), var(--c-red) calc(100% - 2px));
+
+    &:has([data-reset]:not([hidden])) {
+      padding-inline-start: 0.5rem;
+    }
+  }
+
+  /* Phones: × only (named „Wyczyść” for screen readers). */
+  .filters-chip--clear__label {
+    @media (max-width: 39.99rem) {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  .filters-chip--clear {
+    gap: 0.3rem;
+    min-inline-size: 2.25rem;
+    justify-content: center;
+    padding-inline: 0.7rem 0.85rem;
+    border-color: var(--c-ink);
+    background: var(--c-ink);
+    color: var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    &:hover {
+      background: #1b2a39;
+    }
+
+    &[hidden] {
+      display: none;
+    }
+
+    @media (max-width: 39.99rem) {
+      padding: 0;
+    }
+
+    svg {
+      inline-size: 0.9rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+    }
+  }
+
+  /* Colour: a bare dot; once picked it grows into a pill with its name. */
+  .filters-chip--dot {
+    justify-content: center;
+    min-inline-size: 2.25rem;
+    padding: 0;
+
+    &[aria-pressed='true'] {
+      padding-inline: 0.45rem 0.8rem;
+    }
+  }
+
+  .filters-chip__swatch {
+    flex: none;
+    inline-size: 1.15rem;
+    block-size: 1.15rem;
+    border-radius: 50%;
+    background: var(--sw);
+    box-shadow: inset 0 0 0 1px rgb(5 15 26 / 0.4);
+
+    [aria-pressed='true'] > & {
+      box-shadow:
+        inset 0 0 0 1px rgb(5 15 26 / 0.35),
+        0 0 0 2px var(--c-white);
+    }
+  }
+
+  .filters-chip--dot:not([aria-pressed='true']) .filters-chip__label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Arrows: desktop pointers only, and only while the row actually overflows that way. */
+  .filters-rail__arrow {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    inset-block: 0;
+    inline-size: 2.5rem;
+    padding: 0;
+    border: 0;
+    background: var(--c-white);
+    color: var(--c-red);
+    cursor: pointer;
+
+    svg {
+      inline-size: 1.2rem;
+      margin: auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    &:hover {
+      color: var(--c-red-deep);
+      background: #fbe7ea;
+    }
+  }
+
+  .filters-rail__arrow--prev {
+    inset-inline-start: 0;
+    box-shadow: 0.6rem 0 0.8rem -0.4rem rgb(0 0 0 / 0.18);
+  }
+
+  .filters-rail__arrow--next {
+    inset-inline-end: 0;
+    box-shadow: -0.6rem 0 0.8rem -0.4rem rgb(0 0 0 / 0.18);
+  }
+
+  @media (min-width: 48rem) and (hover: hover) and (pointer: fine) {
+    .filters-rail:has([data-more-start]) .filters-rail__arrow--prev,
+    .filters-rail:has([data-more-end]) .filters-rail__arrow--next {
+      display: flex;
+    }
+  }
+
+  /* ——— „Wszystkie filtry”: bottom sheet on phones, centred modal from 48rem ——— */
+  .filters-sheet {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    max-block-size: min(88svh, 46rem);
+    margin: auto 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 1rem 1rem 0 0;
+    background: linear-gradient(180deg, var(--c-red-deep), #6a0717);
+    color: var(--c-white);
+    box-shadow: 0 -1rem 3rem rgb(0 0 0 / 0.45);
+    translate: 0 100%;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition:
+        translate var(--dur) var(--ease-out),
+        opacity var(--dur) var(--ease-out),
+        scale var(--dur) var(--ease-out),
+        display var(--dur) allow-discrete,
+        overlay var(--dur) allow-discrete;
+    }
+
+    /* Same retuned tokens as the page (the dialog renders in the top layer). */
+    --fg-muted: rgb(250 250 250 / 0.9);
+    --line: rgb(250 250 250 / 0.16);
+    --line-control: rgb(250 250 250 / 0.7);
+
+    &[open] {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      translate: 0 0;
+    }
+
+    &::backdrop {
+      background: rgb(30 2 8 / 0.72);
+      opacity: 0;
+
+      @media (prefers-reduced-motion: no-preference) {
+        transition:
+          opacity var(--dur) var(--ease-out),
+          display var(--dur) allow-discrete,
+          overlay var(--dur) allow-discrete;
+      }
+    }
+
+    &[open]::backdrop {
+      opacity: 1;
     }
 
     @media (min-width: 48rem) {
-      flex-wrap: wrap;
-      margin-inline-end: 0;
-      padding-inline-end: 0;
-      overflow: visible;
-      mask-image: none;
+      inline-size: min(46rem, 100% - 4rem);
+      max-block-size: min(86svh, 50rem);
+      margin: auto;
+      border-radius: 1rem;
+      box-shadow: 0 2rem 4rem rgb(0 0 0 / 0.5);
+      translate: none;
+      opacity: 0;
+      scale: 0.96;
+
+      &[open] {
+        translate: none;
+        opacity: 1;
+        scale: 1;
+      }
     }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @starting-style {
+      .filters-sheet[open] {
+        translate: 0 100%;
+      }
+
+      .filters-sheet[open]::backdrop {
+        opacity: 0;
+      }
+    }
+
+    @media (min-width: 48rem) {
+      @starting-style {
+        .filters-sheet[open] {
+          translate: none;
+          opacity: 0;
+          scale: 0.96;
+        }
+      }
+    }
+  }
+
+  .filters-sheet__head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem var(--gutter) 0.6rem;
+    border-block-end: 1px solid var(--line);
+
+    /* Grab handle (phones). */
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block-start: 0.45rem;
+      inset-inline-start: 50%;
+      inline-size: 2.5rem;
+      block-size: 0.25rem;
+      border-radius: 999px;
+      background: rgb(250 250 250 / 0.35);
+      translate: -50% 0;
+
+      @media (min-width: 48rem) {
+        display: none;
+      }
+    }
+
+    @media (min-width: 48rem) {
+      padding: 1rem 1.5rem;
+    }
+  }
+
+  .filters-sheet__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 900;
+    font-stretch: 75%;
+    text-transform: uppercase;
+  }
+
+  .filters-sheet__close {
+    padding: 0;
+    inline-size: 2.75rem;
+  }
+
+  .filters-sheet__body {
+    display: grid;
+    gap: 1.4rem;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 1rem var(--gutter) 1.5rem;
+
+    @media (min-width: 48rem) {
+      padding: 1.25rem 1.5rem 1.75rem;
+    }
+  }
+
+  .filters-sheet__foot {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem;
+    padding: 0.75rem var(--gutter) max(0.75rem, env(safe-area-inset-bottom));
+    border-block-start: 1px solid var(--line);
+
+    @media (min-width: 48rem) {
+      padding: 0.9rem 1.5rem;
+    }
+  }
+
+  .group {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .group__legend {
+    margin: 0 0 0.55rem;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
 
   .chip,
@@ -402,8 +1063,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    flex: none;
-    min-block-size: 2.5rem;
+    min-block-size: 2.75rem;
     padding: 0 0.9rem;
     border: 1.5px solid var(--line-control);
     border-radius: 999px;
@@ -416,10 +1076,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
-    transition:
-      background-color var(--dur-fast),
-      border-color var(--dur-fast),
-      color var(--dur-fast);
+    transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
 
     &:hover {
       border-color: var(--c-white);
@@ -454,7 +1111,6 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       cursor: pointer;
     }
 
-    /* Zero results with the other filters: still readable, just clearly secondary. */
     &[data-empty]:not(:has(:checked)) {
       border-style: dashed;
       background: transparent;
@@ -471,7 +1127,6 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     block-size: 0.85rem;
     border-radius: 50%;
     background: var(--sw);
-    /* Light ring on red, dark ring once the chip turns white – every swatch stays visible. */
     box-shadow: inset 0 0 0 1px rgb(250 250 250 / 0.7);
   }
 
@@ -483,7 +1138,6 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
     color: var(--fg-muted);
   }
 
-  /* Signed / described: a pill holding a small switch (still role="switch"). */
   .switch {
     gap: 0.55rem;
     padding-inline-start: 0.55rem;
@@ -499,9 +1153,7 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
       background: rgb(0 0 0 / 0.2);
       appearance: none;
       cursor: pointer;
-      transition:
-        background-color var(--dur-fast),
-        border-color var(--dur-fast);
+      transition: background-color var(--dur-fast), border-color var(--dur-fast);
 
       &::before {
         content: '';
@@ -523,214 +1175,8 @@ const sorts = Object.entries(strings.sortOptions) as [keyof typeof strings.sortO
         }
       }
 
-      /* The pill draws the focus ring. */
       &:focus-visible {
         outline: none;
-      }
-    }
-  }
-
-  .sort {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    gap: 0.55rem;
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    white-space: nowrap;
-
-    @media (min-width: 48rem) {
-      margin-inline-start: 0.75rem;
-    }
-
-    select {
-      min-block-size: 2.5rem;
-      padding: 0 2.2rem 0 0.9rem;
-      border: 1.5px solid var(--line-control);
-      border-radius: 999px;
-      background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fafafa' stroke-width='2'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")
-          right 0.7rem center / 1rem no-repeat,
-        rgb(0 0 0 / 0.1);
-      color: var(--c-white);
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-stretch: 90%;
-      letter-spacing: 0;
-      text-transform: none;
-      /* ≥16px on phones – no iOS zoom. */
-      font-size: 1rem;
-      appearance: none;
-      cursor: pointer;
-
-      &:hover {
-        border-color: var(--c-white);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--c-white);
-        outline-offset: 2px;
-      }
-
-      option {
-        background: #6a0717;
-        color: var(--c-white);
-      }
-
-      @media (min-width: 48rem) {
-        font-size: var(--fs-sm);
-      }
-    }
-  }
-
-  /* ——— Bottom sheet (phones) ——— */
-  .sheet {
-    inline-size: 100%;
-    max-inline-size: 100%;
-    max-block-size: min(88svh, 46rem);
-    margin: auto 0 0;
-    padding: 0;
-    border: 0;
-    border-radius: 1rem 1rem 0 0;
-    background: linear-gradient(180deg, var(--c-red-deep), #6a0717);
-    color: var(--c-white);
-    box-shadow: 0 -1rem 3rem rgb(0 0 0 / 0.45);
-    translate: 0 100%;
-    transition:
-      translate var(--dur) var(--ease-out),
-      display var(--dur) allow-discrete,
-      overlay var(--dur) allow-discrete;
-
-    &[open] {
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      translate: 0 0;
-    }
-
-    &::backdrop {
-      background: rgb(30 2 8 / 0.72);
-      opacity: 0;
-      transition:
-        opacity var(--dur) var(--ease-out),
-        display var(--dur) allow-discrete,
-        overlay var(--dur) allow-discrete;
-    }
-
-    &[open]::backdrop {
-      opacity: 1;
-    }
-
-    /* In the sheet the groups stack: legend above, chips wrap (no sideways scroll). */
-    .group__legend {
-      float: none;
-      inline-size: auto;
-      min-block-size: 0;
-      margin-block-end: 0.55rem;
-    }
-
-    .facets {
-      gap: 1.4rem;
-    }
-
-    .chips,
-    .options {
-      flex-wrap: wrap;
-      margin-inline-end: 0;
-      padding-inline-end: 0;
-      overflow: visible;
-      mask-image: none;
-    }
-
-    .chip,
-    .switch {
-      min-block-size: 2.75rem;
-    }
-  }
-
-  @starting-style {
-    .sheet[open] {
-      translate: 0 100%;
-    }
-
-    .sheet[open]::backdrop {
-      opacity: 0;
-    }
-  }
-
-  .sheet__head {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.1rem var(--gutter) 0.6rem;
-
-    /* Grab handle. */
-    &::before {
-      content: '';
-      position: absolute;
-      inset-block-start: 0.45rem;
-      inset-inline-start: 50%;
-      inline-size: 2.5rem;
-      block-size: 0.25rem;
-      border-radius: 999px;
-      background: rgb(250 250 250 / 0.35);
-      translate: -50% 0;
-    }
-  }
-
-  .sheet__title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--fs-lg);
-    font-weight: 900;
-    font-stretch: 75%;
-    text-transform: uppercase;
-  }
-
-  .sheet__close {
-    padding: 0;
-    inline-size: 2.75rem;
-  }
-
-  .sheet__body {
-    overflow: auto;
-    overscroll-behavior: contain;
-    padding: 0.75rem var(--gutter) 1.5rem;
-  }
-
-  .sheet__foot {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.6rem;
-    padding: 0.75rem var(--gutter) max(0.75rem, env(safe-area-inset-bottom));
-    border-block-start: 1px solid var(--line);
-  }
-
-  .btn--primary {
-    border-color: var(--c-white);
-    background: var(--c-white);
-    color: var(--c-red-deep);
-
-    &:hover {
-      background: rgb(250 250 250 / 0.88);
-    }
-  }
-
-  /* „Filtry ↑” – jump back to the chips once they have scrolled away. */
-  @media (min-width: 48rem) {
-    @supports (container-type: scroll-state) {
-      @container scroll-state(stuck: top) {
-        .bar__open {
-          display: inline-flex;
-        }
-      }
-    }
-
-    @supports not (container-type: scroll-state) {
-      .bar__open {
-        display: inline-flex;
       }
     }
   }

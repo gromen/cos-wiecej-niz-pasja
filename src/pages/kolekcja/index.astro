@@ -46,6 +46,28 @@ const t: CollectionStrings = {
     sortOptions: { newest: 'Najnowsze w kolekcji', number: 'Numer na plecach', season: 'Sezon' },
     activeCount: 'aktywne filtry',
   },
+  quick: {
+    all: 'Wszystkie filtry',
+    allShort: 'Filtry',
+    rail: 'Szybkie filtry',
+    railShort: 'Szybkie filtry',
+    clear: 'Wyczyść',
+    prev: 'Przewiń filtry w lewo',
+    next: 'Przewiń filtry w prawo',
+    colorPrefix: 'Kolor:',
+    signed: 'Z autografem',
+    described: 'Opisane',
+    decades: [
+      { label: '2020s', eras: ['2020'] },
+      { label: '2010s', eras: ['2010'] },
+      { label: '2000s', eras: ['2000'] },
+      { label: 'lata 70/80', eras: ['1970', '1980'] },
+    ],
+    kinds: [
+      { label: 'Bramkarska', kind: 'goalkeeper' },
+      { label: 'Okolicznościowa', kind: 'special' },
+    ],
+  },
   card: {
     draft: 'do uzupełnienia',
     signed: 'autograf',
@@ -131,10 +153,12 @@ const signedCount = shirts.filter(({ data }) => data.signed).length;
     <div class="browse">
       <CollectionFilters
         strings={t.filters}
+        quick={t.quick}
         facets={facets}
         total={total}
         signedCount={signedCount}
         describedCount={described}
+        forms={t.client.forms}
       />
       <CollectionResults strings={t.results}>
         {
@@ -150,7 +174,9 @@ const signedCount = shirts.filter(({ data }) => data.signed).length;
 </BaseLayout>
 
 <script>
+  // Order matters: the runtime first (restores the form from the URL), then the quick-chip bridge.
   import '../../components/collection/collection';
+  import '../../components/collection/quick-filters';
 </script>
 
 <style>

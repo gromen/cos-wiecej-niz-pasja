@@ -54,6 +54,22 @@ export interface CollectionStrings {
     sortOptions: { newest: string; number: string; season: string };
     activeCount: string;
   };
+  /** Quick-chip rail + „Wszystkie filtry” dialog. */
+  quick: {
+    all: string;
+    allShort: string;
+    rail: string;
+    railShort: string;
+    clear: string;
+    prev: string;
+    next: string;
+    colorPrefix: string;
+    signed: string;
+    described: string;
+    /** Decade chips; eras missing from the data are dropped. */
+    decades: { label: string; eras: string[] }[];
+    kinds: { label: string; kind: string }[];
+  };
   card: {
     draft: string;
     signed: string;
