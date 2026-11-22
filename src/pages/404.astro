@@ -1,0 +1,741 @@
+---
+/**
+ * 404 – „Spalony!” (Trybuna language). Served by Workers Static Assets
+ * (`not_found_handling: "404-page"`) at ANY unknown URL, e.g. /a/b/c – so every link and
+ * asset path here must be absolute. Concept: a lone shirt back on a hanger in the dressing
+ * room – name „ZGUBIONA”, number 404 – swinging in once and settling. CSS-only motion,
+ * everything finite (< 5 s) and off under prefers-reduced-motion.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/site/SiteHeader.astro';
+import Grain from '../components/home/Grain.astro';
+import HomeFooter from '../components/home/HomeFooter.astro';
+import { BODY, CUFFS, HEM, NECK_BACK, SEAMS, VIEWBOX } from '../components/shirt/geometry';
+import { firstName, getShirts, lastName, shirtHref, shirtPalette } from '../lib/shirts';
+import { socials } from '../data/collection';
+
+/* ─────────────── Copy (PL). EN version later: mirror this object. ─────────────── */
+const t = {
+  meta: {
+    title: 'Spalony! Nie ma takiej strony (404) | Coś więcej niż pasja',
+    description: 'Strona, której szukasz, nie istnieje albo zmieniła numer. Wróć do kolekcji meczowych koszulek Wisły Kraków.',
+  },
+  eyebrow: 'Błąd 404 · szatnia',
+  srPrefix: 'Błąd 404.',
+  title: 'Spalony!',
+  titleSub: 'Tej koszulki nie ma w szatni',
+  lead: 'Strona, której szukasz, nie istnieje albo zmieniła numer. Sędzia sprawdza powtórkę – a my wracamy do gry.',
+  ctaHome: 'Wróć na stronę główną',
+  ctaCollection: 'Przejrzyj kolekcję',
+  shirtName: 'Zgubiona',
+  shirtNumber: '404',
+  sash: '★ spalony ★ powtórka VAR ★ wracamy do gry ',
+  suggest: {
+    kicker: 'Może szukasz…',
+    title: 'Najnowsze w kolekcji',
+    number: 'numer',
+    post: 'Post #',
+  },
+  footer: {
+    brand: 'Coś więcej niż pasja',
+    disclaimer: 'Nieoficjalna strona kolekcjonerska – nie jest powiązana z TS Wisła Kraków SA.',
+    nav: 'Stopka',
+    collection: 'Kolekcja',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    newTab: '(otwiera się w nowej karcie)',
+    copyright: 'Coś więcej niż pasja',
+  },
+};
+
+/** Static build → deterministic picks: the three newest real (non-draft) shirts (getShirts sorts newest IG post first). */
+const suggestions = (await getShirts()).filter(({ data }) => !data.draft).slice(0, 3);
+
+const digits = [...t.shirtNumber].map((char, i) => ({ char, i }));
+// Enough repeats to fill the rotated sash on very wide screens.
+const sashRepeats = Array.from({ length: 8 }, (_, i) => i);
+const starPoints = '12,1.5 14.9,8.6 22.5,9.2 16.7,14.2 18.5,21.6 12,17.6 5.5,21.6 7.3,14.2 1.5,9.2 9.1,8.6';
+/** Shirt viewBox extended upwards so the hanger hook fits above the collar. */
+const [, , vbW, vbH] = VIEWBOX.split(' ').map((n) => Number(n));
+const HOOK = 70;
+---
+
+<BaseLayout title={t.meta.title} description={t.meta.description} themeColor="#c6102e" canonical={false} noindex>
+  <Grain />
+  <SiteHeader tone="red" />
+
+  <main id="main" class="nf">
+    <section class="pitch" aria-labelledby="nf-title">
+      <svg class="bigstar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <polygon points={starPoints}></polygon>
+      </svg>
+
+      <!-- Decorative: the h1 carries the real message. -->
+      <div class="rack" aria-hidden="true">
+        <div class="hang">
+          <div class="shirt-back">
+            <svg viewBox={`0 ${-HOOK} ${vbW} ${vbH + HOOK}`} focusable="false">
+              <defs>
+                <clipPath id="nf-clip"><path d={BODY}></path></clipPath>
+                <linearGradient id="nf-edge" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0" stop-color="#000" stop-opacity="0.32"></stop>
+                  <stop offset="0.2" stop-color="#000" stop-opacity="0"></stop>
+                  <stop offset="0.8" stop-color="#000" stop-opacity="0"></stop>
+                  <stop offset="1" stop-color="#000" stop-opacity="0.32"></stop>
+                </linearGradient>
+                <linearGradient id="nf-fold" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0" stop-color="#000" stop-opacity="0"></stop>
+                  <stop offset="0.5" stop-color="#000" stop-opacity="0.1"></stop>
+                  <stop offset="1" stop-color="#000" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+
+              <!-- hanger (behind the shirt, visible through the collar) -->
+              <g class="hanger" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M200 -8 V-34 a13 13 0 1 1 13 -13" stroke-width="5"></path>
+                <path d="M112 40 L200 -8 L288 40" stroke-width="8"></path>
+              </g>
+
+              <path d={BODY} fill="#f2f2ef"></path>
+              <g clip-path="url(#nf-clip)">
+                <rect x="130" y="40" width="46" height="420" fill="url(#nf-fold)"></rect>
+                <rect x="236" y="60" width="40" height="400" fill="url(#nf-fold)"></rect>
+                <rect width="400" height="480" fill="url(#nf-edge)"></rect>
+              </g>
+              <path d={SEAMS} stroke="#000" stroke-opacity="0.18" stroke-width="1.5" fill="none"></path>
+              <path d={CUFFS} fill="#c6102e"></path>
+              <path d={HEM} stroke="#c6102e" stroke-width="3" fill="none"></path>
+              <path d={`${NECK_BACK} Z`} fill="#000" fill-opacity="0.35"></path>
+              <path d={NECK_BACK} stroke="#c6102e" stroke-width="9" fill="none" stroke-linecap="round"></path>
+            </svg>
+
+            <!-- HTML print over the SVG, so the number can animate Archivo's width axis. -->
+            <p class="print-name">{t.shirtName}</p>
+            <p class="print-number">
+              {
+                digits.map(({ char, i }) => (
+                  <span class="ch" style={`--i:${i}`}>
+                    <span class="ghost">{char}</span>
+                    <span class="glyph">{char}</span>
+                  </span>
+                ))
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="copy">
+        <!-- aria-hidden: the h1's sr-only „Błąd 404.” already says this. -->
+        <p class="eyebrow" aria-hidden="true">
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <polygon points={starPoints}></polygon>
+          </svg>
+          {t.eyebrow}
+        </p>
+
+        <h1 id="nf-title">
+          <span class="visually-hidden">{t.srPrefix} </span>
+          <span class="whistle">{t.title}</span>
+          <span class="sub">{t.titleSub}</span>
+        </h1>
+
+        <p class="lead">{t.lead}</p>
+
+        <ul class="actions" role="list">
+          <li>
+            <a class="btn btn--solid" href="/">
+              <svg viewBox="0 0 24 12" aria-hidden="true" focusable="false">
+                <path d="M24 6H2M7 1L2 6l5 5" fill="none" stroke="currentColor" stroke-width="2"></path>
+              </svg>
+              {t.ctaHome}
+            </a>
+          </li>
+          <li>
+            <a class="btn btn--ghost" href="/kolekcja/">
+              {t.ctaCollection}
+              <svg viewBox="0 0 24 12" aria-hidden="true" focusable="false">
+                <path d="M0 6h22M17 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2"></path>
+              </svg>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sash" aria-hidden="true">
+        <div class="sash-track">
+          {sashRepeats.map(() => <span>{t.sash}</span>)}
+        </div>
+      </div>
+    </section>
+
+    {
+      suggestions.length > 0 && (
+        <section class="suggest" aria-labelledby="nf-suggest-title">
+          <p class="kicker">{t.suggest.kicker}</p>
+          <h2 id="nf-suggest-title">{t.suggest.title}</h2>
+          <ul class="cards" role="list">
+            {suggestions.map(({ id, data }) => (
+              <li>
+                <a class="card" href={shirtHref(id)} style={`--body:${shirtPalette[data.color].body}`}>
+                  <span class="card-no">
+                    <span class="visually-hidden">{t.suggest.number} </span>
+                    {data.number}
+                  </span>
+                  <span class="card-name">
+                    {firstName(data.player) && <span class="card-first">{firstName(data.player)}</span>}
+                    <span class="card-last">{lastName(data.player)}</span>
+                  </span>
+                  <span class="card-meta">
+                    {[data.season, data.igPost ? `${t.suggest.post}${data.igPost}` : undefined].filter((part): part is string => Boolean(part)).join(' · ')}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </main>
+
+  <HomeFooter strings={t.footer} instagram={socials.instagram} facebook={socials.facebook} />
+</BaseLayout>
+
+<style is:global>
+  /* Red overscroll like the home page; scoped to this page via :has(). */
+  html:has(.nf) body {
+    background: var(--c-red);
+  }
+</style>
+
+<style>
+  /* ───────────── Hero „pitch” ───────────── */
+  .pitch {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    display: grid;
+    gap: 1.75rem;
+    justify-items: center;
+    align-content: center;
+    min-block-size: calc(100svh - var(--hdr-space));
+    padding: 1.5rem var(--gutter) 2rem;
+    background: var(--c-red);
+    color: var(--c-white);
+  }
+
+  .bigstar {
+    position: absolute;
+    z-index: -1;
+    inset-inline-start: -22vmin;
+    inset-block-start: 4svh;
+    inline-size: 70vmin;
+    fill: none;
+    stroke: var(--c-white);
+    stroke-width: 0.15;
+    opacity: 0.2;
+  }
+
+  /* ───────────── Shirt on a hanger ───────────── */
+  .rack {
+    inline-size: min(100%, 19rem, 44svh);
+    /* Static wrapper: the shadow lives outside the animated .hang. */
+    filter: drop-shadow(0 1.2rem 1.4rem rgb(5 15 26 / 0.35));
+
+    @media (min-width: 60rem) {
+      grid-column: 2;
+      grid-row: 1;
+      inline-size: min(100%, 30rem, 58svh);
+    }
+
+    /* Pivot at the hook (top centre) – the swing reads as a hanging shirt. */
+    & .hang {
+      transform-origin: 50% 0;
+    }
+  }
+
+  .shirt-back {
+    position: relative;
+    container-type: inline-size;
+    aspect-ratio: 400 / 550;
+
+    & svg {
+      position: absolute;
+      inset: 0;
+      inline-size: 100%;
+      block-size: 100%;
+      overflow: visible;
+    }
+
+    & .hanger {
+      stroke: var(--c-mist);
+    }
+
+    & :is(.print-name, .print-number) {
+      position: absolute;
+      inset-inline: 0;
+      margin: 0;
+      color: var(--c-red);
+      font-family: var(--font-display);
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    /* Positions follow the 400×550 viewBox: name ≈ y 108, number centred ≈ y 230 (+70 hook). */
+    & .print-name {
+      inset-block-start: 26.5%;
+      font-size: 7.5cqi;
+      font-stretch: 100%;
+      letter-spacing: 0.14em;
+      /* Optical centring: letter-spacing adds trailing space after the last letter. */
+      padding-inline-start: 0.14em;
+    }
+
+    & .print-number {
+      inset-block-start: 36%;
+      display: flex;
+      justify-content: center;
+      font-size: 30cqi;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+  }
+
+  /* The ghost reserves the final (wide, black) width so animating the glyph never shifts layout. */
+  .ch {
+    position: relative;
+    display: inline-block;
+  }
+
+  .ghost,
+  .glyph {
+    font-stretch: 100%;
+    font-weight: 900;
+  }
+
+  .ghost {
+    visibility: hidden;
+  }
+
+  .glyph {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  /* ───────────── Copy ───────────── */
+  .copy {
+    display: grid;
+    gap: 1.25rem;
+    justify-items: start;
+    inline-size: 100%;
+    max-inline-size: 40rem;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .star {
+    inline-size: 1.15em;
+    block-size: 1.15em;
+    fill: var(--c-white);
+  }
+
+  h1 {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+  }
+
+  .whistle {
+    font-size: min(12.5vw, 6.5rem);
+    font-weight: 900;
+    font-stretch: 125%;
+    line-height: 0.88;
+    /* Keeps „SPALONY!” on one line while its width axis animates. */
+    white-space: nowrap;
+  }
+
+  .sub {
+    max-inline-size: 18ch;
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    font-stretch: 90%;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+  }
+
+  .lead {
+    margin: 0;
+    max-inline-size: 42ch;
+    font-size: var(--fs-md);
+    line-height: 1.5;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    inline-size: 100%;
+
+    & li {
+      flex: 1 1 100%;
+    }
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75em;
+    min-block-size: 3.25rem;
+    padding: 0.8em 1.25em;
+    border: 3px solid var(--c-white);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition:
+      background-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
+
+    & svg {
+      flex: none;
+      inline-size: 1.5em;
+      transition: transform var(--dur) var(--ease-out);
+    }
+
+    &.btn--solid {
+      background: var(--c-white);
+      color: var(--c-red-deep);
+
+      &:hover,
+      &:focus-visible {
+        background: var(--c-ink);
+        border-color: var(--c-ink);
+        color: var(--c-white);
+
+        & svg {
+          transform: translateX(-0.3em);
+        }
+      }
+    }
+
+    &.btn--ghost {
+      background: transparent;
+      color: var(--c-white);
+
+      &:hover,
+      &:focus-visible {
+        background: var(--c-white);
+        color: var(--c-red-deep);
+
+        & svg {
+          transform: translateX(0.3em);
+        }
+      }
+    }
+  }
+
+  /* ───────────── Diagonal sash ───────────── */
+  .sash {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    margin-block: 1.5rem 1rem;
+    margin-inline: calc(-1 * var(--gutter) - 10vw);
+    overflow: hidden;
+    background: var(--c-white);
+    color: var(--c-red-deep);
+    transform: rotate(-5deg);
+  }
+
+  .sash-track {
+    display: flex;
+    align-items: center;
+    block-size: clamp(2.75rem, 7vmax, 5rem);
+
+    & span {
+      flex: none;
+      padding-inline: 1.5rem;
+      font-family: var(--font-mono);
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  }
+
+  /* ───────────── „Może szukasz…” ───────────── */
+  .suggest {
+    display: grid;
+    gap: 1rem;
+    padding: 4.5rem var(--gutter) 2rem;
+    background: var(--c-ink);
+    color: var(--c-white);
+
+    @media (min-width: 48rem) {
+      padding-block-start: 6rem;
+    }
+
+    & h2 {
+      margin: 0 0 1rem;
+      font-family: var(--font-display);
+      font-size: var(--fs-xl);
+      font-weight: 900;
+      font-stretch: 75%;
+      line-height: 0.95;
+      text-transform: uppercase;
+    }
+
+    & .kicker {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--c-gold);
+    }
+
+    & .cards {
+      display: grid;
+      gap: 1rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      @media (min-width: 48rem) {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    & .card {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-areas:
+        'no name'
+        'no meta';
+      align-items: end;
+      column-gap: 1.25rem;
+      row-gap: 0.25rem;
+      padding: 1.25rem 1.25rem 1.1rem;
+      border: 1px solid var(--line);
+      border-block-start: 6px solid var(--body, var(--c-red));
+      background: var(--c-navy-deep);
+      color: var(--c-white);
+      text-decoration: none;
+      transition:
+        background-color var(--dur-fast) var(--ease-out),
+        border-color var(--dur-fast) var(--ease-out);
+
+      &:hover,
+      &:focus-visible {
+        background: var(--c-navy);
+        border-color: var(--line-control);
+        border-block-start-color: var(--body, var(--c-red));
+      }
+    }
+
+    & .card-no {
+      grid-area: no;
+      font-family: var(--font-display);
+      font-size: clamp(3.2rem, 2.6rem + 3vw, 5rem);
+      font-weight: 900;
+      font-stretch: 62%;
+      line-height: 0.8;
+      font-variant-numeric: tabular-nums;
+    }
+
+    & .card-name {
+      grid-area: name;
+      display: grid;
+      line-height: 1.05;
+    }
+
+    & .card-first {
+      font-size: var(--fs-sm);
+      color: var(--c-mist);
+    }
+
+    & .card-last {
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      font-weight: 900;
+      font-stretch: 90%;
+      text-transform: uppercase;
+    }
+
+    & .card-meta {
+      grid-area: meta;
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-mist);
+    }
+  }
+
+  /* ───────────── Larger screens ───────────── */
+  @media (min-width: 36rem) {
+    .actions li {
+      flex: 0 1 auto;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .pitch {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      column-gap: clamp(2rem, 5vw, 6rem);
+      align-items: center;
+      padding-block: 2rem 1rem;
+    }
+
+    .copy {
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: end;
+      gap: 1.5rem;
+    }
+
+    .whistle {
+      font-size: min(8.5vw, 9rem);
+    }
+
+    .sub {
+      font-size: var(--fs-xl);
+    }
+  }
+
+  /* ───────────── Motion (finite, < 5 s; nothing at all under reduced motion) ───────────── */
+  @media (prefers-reduced-motion: no-preference) {
+    .hang {
+      animation: nf-swing 2600ms var(--ease-in-out) 200ms both;
+    }
+
+    .glyph {
+      animation: nf-punch 760ms cubic-bezier(0.2, 1.25, 0.35, 1) calc(900ms + var(--i) * 110ms) both;
+    }
+
+    .print-name {
+      animation: nf-stitch 900ms var(--ease-out) 700ms both;
+    }
+
+    .whistle {
+      animation: nf-whistle 900ms cubic-bezier(0.2, 1.25, 0.35, 1) 350ms both;
+    }
+
+    .bigstar {
+      animation: nf-star-in 1400ms var(--ease-out) 300ms both;
+    }
+
+    .sash {
+      animation: nf-sash-in 900ms var(--ease-out) 600ms both;
+    }
+
+    /* One slow glide, then still – no endless marquee (WCAG 2.2.2). */
+    .sash-track {
+      animation: nf-glide 4200ms var(--ease-out) 600ms both;
+    }
+  }
+
+  @keyframes nf-swing {
+    0% {
+      opacity: 0;
+      transform: translateY(-12%) rotate(-11deg);
+    }
+    18% {
+      opacity: 1;
+    }
+    32% {
+      transform: rotate(7deg);
+    }
+    50% {
+      transform: rotate(-4deg);
+    }
+    66% {
+      transform: rotate(2.2deg);
+    }
+    82% {
+      transform: rotate(-0.9deg);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes nf-punch {
+    from {
+      opacity: 0;
+      transform: translateY(35%) scaleY(1.3);
+      font-stretch: 62%;
+      font-weight: 300;
+    }
+    55% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      font-stretch: 100%;
+      font-weight: 900;
+    }
+  }
+
+  @keyframes nf-stitch {
+    from {
+      opacity: 0;
+      letter-spacing: 0.6em;
+    }
+  }
+
+  @keyframes nf-whistle {
+    from {
+      opacity: 0;
+      font-stretch: 62%;
+      font-weight: 300;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes nf-star-in {
+    from {
+      opacity: 0;
+      transform: rotate(-180deg) scale(0.2);
+    }
+  }
+
+  @keyframes nf-sash-in {
+    from {
+      transform: translateX(-110%) rotate(-5deg);
+    }
+  }
+
+  @keyframes nf-glide {
+    from {
+      transform: translateX(-18%);
+    }
+  }
+</style>

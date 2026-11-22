@@ -42,6 +42,9 @@ export const colorLabel: Record<ShirtData['color'], Record<Lang, string>> = {
 
 export const lastName = (player: string): string => player.split(' ').at(-1) ?? player;
 
+/** Everything before the surname („” for single-name players). */
+export const firstName = (player: string): string => player.split(' ').slice(0, -1).join(' ');
+
 /** Shared view-transition name for the shirt visual (card ↔ detail page). */
 export const shirtTransitionName = (id: string): string => `shirt-${id}`;
 
