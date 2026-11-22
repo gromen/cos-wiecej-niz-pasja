@@ -424,7 +424,7 @@ const meta = (entry: ShirtEntry): string =>
     }
   }
 
-  @keyframes rise {
+  @keyframes featured-rise {
     from {
       opacity: 0;
       translate: 0 2.5rem;
@@ -456,7 +456,7 @@ const meta = (entry: ShirtEntry): string =>
       }
 
       .copy > * {
-        animation: rise linear both;
+        animation: featured-rise linear both;
         animation-timeline: view();
         animation-range: entry 10% cover 35%;
       }
@@ -485,7 +485,7 @@ const meta = (entry: ShirtEntry): string =>
           }
 
           .copy > * {
-            animation: rise 700ms var(--ease-out) both;
+            animation: featured-rise 700ms var(--ease-out) both;
           }
 
           .copy > :nth-child(2) {

@@ -1,16 +1,28 @@
 ---
 /**
  * „Sezony” – the real shirts grouped by season, oldest → newest.
+ * Every stop is a composed spread: year block (+ meta) → shirt(s) on a floor shadow → caption card.
  *
- * Base layout (mobile, no JS, reduced motion, no scroll-driven animations):
- *   a native horizontal scroll-snap strip – one season per card, thumb-friendly.
- * Desktop + motion + `animation-timeline` support:
- *   the section is pinned and vertical scroll drives the strip sideways
- *   (pure CSS, a view-timeline on the section). Year type stretches as it passes.
+ * Base layout (mobile, reduced motion, no scroll-driven animations; JS not required):
+ *   a native horizontal scroll-snap strip – one season per card, stacked year → shirt(s) → caption.
+ *   All cards share the tallest card's height (year top, shirt centred, caption on the bottom edge).
+ *   The season chips only appear once home.ts has wired them up (`data-ready`).
+ * ≥ 48rem strip – who gets it: every viewport 48–64rem wide; ≥ 64rem with
+ *   `prefers-reduced-motion: reduce`; ≥ 64rem in browsers without scroll-driven animations
+ *   (`animation-timeline: view()` + `view-timeline` + `animation-range`), i.e. Safari < 26 and
+ *   Firefox < 159 (Chrome/Edge have them since 115; caniuse, 2026):
+ *   the same two-column spread as the pinned layout (year + caption left, shirt right), sized to
+ *   the viewport height, centred snap with the neighbours peeking in.
+ * ≥ 64rem + motion + scroll-driven animations (Chrome/Edge 115+, Safari 26+, Firefox 159+):
+ *   the section is pinned and vertical scroll drives the strip sideways (pure CSS, a view-timeline
+ *   on the section). Each spread fills the viewport: year (+ card for a single shirt) left,
+ *   shirt(s) right, overlapping the year column only at its padding edge. Year type
+ *   stretches as it passes, shirts slide/scale in with a slight parallax against the year.
  *
  * The shirt visual carries the shared `view-transition-name`, so clicking morphs
  * into the detail page. The featured cards further down reuse the same names –
  * home.ts moves the name to whichever element was clicked (never two at once).
+ * Each shirt is an <article>: the card's link finds its visual via `closest('article')`.
  */
 import ShirtFace from '../shirt/ShirtFace.astro';
 import { lastName, shirtHref, shirtTransitionName, type ShirtEntry } from '../../lib/shirts';
@@ -22,6 +34,11 @@ export interface SeasonsStrings {
   number: string;
   open: string;
   navLabel: string;
+  /** „Sezon” in the „Sezon 02 / 06” meta line. */
+  stopLabel: string;
+  /** Accessible names of the prev/next arrow buttons. */
+  prev: string;
+  next: string;
 }
 
 interface Props {
@@ -69,17 +86,42 @@ const stops = [...bySeason.values()].sort((a, b) => a.start - b.start);
 stops.forEach((stop) => stop.shirts.sort((a, b) => (a.data.igPost ?? 0) - (b.data.igPost ?? 0)));
 /*
  * Rendered shirt width per layout (keep in sync with the CSS below):
- *   < 40rem   stop = min(84vw, 26rem); one shirt = 78% of it, two = half each
- *   40–64rem  stop = min(60vw, 30rem)
- *   ≥ 64rem   pinned: 44svh × 82% (one) or 66svh / 2 (two) – height-driven, hence vh
+ *   < 40rem   stop = min(84vw, 26rem); one shirt = 72% of it, two = half each
+ *   40–48rem  stop = min(60vw, 30rem)
+ *   ≥ 48rem   strip spread: one = 46svh tall → min(46svh × 5/6 ≈ 38svh, ~46vw), two = min(30svh, ~20vw)
+ *   ≥ 64rem   pinned: one = 56svh tall → 56svh × 5/6 ≈ 47svh wide, two = 33svh – height-driven, hence vh
+ *   (.visual is 5:6, so a height h needs a width of h × 5/6.)
  */
-const sizesOne = '(min-width: 64rem) 36vh, (min-width: 40rem) 23rem, 66vw';
-const sizesTwo = '(min-width: 64rem) 33vh, (min-width: 40rem) 15rem, 41vw';
+const sizesOne =
+  '(min-width: 64rem) min(47vh, 47vw), (min-width: 48rem) min(38vh, 46vw), (min-width: 40rem) min(21.6rem, 43vw), 61vw';
+const sizesTwo =
+  '(min-width: 64rem) min(33vh, 22vw), (min-width: 48rem) min(30vh, 20vw), (min-width: 40rem) 14rem, 40vw';
 const pad = (n: number): string => String(n).padStart(2, '0');
-const slug = (stop: Stop): string => `sezon-${stop.start}`;
-const fact = (entry: ShirtEntry): string => {
-  const { competition, match } = entry.data;
-  return [competition, match?.pl].filter(Boolean).join(' – ');
+/** Anchor id from the (unique) stop key: „2008/09” → sezon-2008-09, „ok. 70/80” → sezon-ok-70-80. */
+const slugify = (key: string): string =>
+  key
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/ł/g, 'l')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+const slugs = new Map<Stop, string>();
+stops.forEach((stop, i) => {
+  const base = `sezon-${slugify(stop.key) || i + 1}`;
+  const taken = new Set(slugs.values());
+  slugs.set(stop, taken.has(base) ? `${base}-${i + 1}` : base);
+});
+const slug = (stop: Stop): string => slugs.get(stop) ?? '';
+const competitions = (stop: Stop): string =>
+  [...new Set(stop.shirts.map(({ data }) => data.competition).filter(Boolean))].join(' · ');
+/**
+ * Short teaser from story.pl: whole sentences until ~80 chars (CSS clamps the rest).
+ * A sentence ends after ≥3 non-space chars + . ! ? … (so „śp. Andrzeja” doesn't split).
+ */
+const excerpt = (entry: ShirtEntry): string => {
+  const sentences = (entry.data.story?.pl ?? '').split(/(?<=\S{3}[.!?…])\s+(?=[\p{Lu}„])/u);
+  return sentences.reduce((out, sentence) => (out.length >= 80 ? out : `${out} ${sentence}`.trim()), '');
 };
 ---
 
@@ -113,59 +155,103 @@ const fact = (entry: ShirtEntry): string => {
     <div class="strip" data-strip>
       <ol class="track" role="list">
         {
-          stops.map((stop, i) => (
-            <li class="stop" id={slug(stop)} style={`--i:${i}`} data-stop>
-              <p class="no" aria-hidden="true">
-                {pad(i + 1)} / {pad(stops.length)}
-              </p>
-              <h3 class="year">
-                {stop.prefix && <span class="prefix">{stop.prefix}</span>}
-                <span class="big">{stop.big}</span>
-                {stop.small && <span class="small">{stop.small}</span>}
-              </h3>
+          stops.map((stop, i) => {
+            const comps = competitions(stop);
+            const many = stop.shirts.length > 1;
+            return (
+              <li class="stop" id={slug(stop)} style={`--i:${i}`} data-count={stop.shirts.length} data-stop>
+                <div class="when">
+                  <p class="no" aria-hidden="true">
+                    {strings.stopLabel} {pad(i + 1)} / {pad(stops.length)}
+                  </p>
+                  <h3 class="year">
+                    {stop.prefix && <span class="prefix">{stop.prefix}</span>}
+                    <span class="big">{stop.big}</span>
+                    {stop.small && <span class="small">{stop.small}</span>}
+                  </h3>
+                  {comps && <p class="comps">{comps}</p>}
+                </div>
 
-              <ul class="shirts" role="list" data-count={stop.shirts.length}>
-                {stop.shirts.map((entry) => {
-                  const vt = shirtTransitionName(entry.id);
-                  return (
-                    <li class="shirt-item">
-                      <a class="shirt-link" href={shirtHref(entry.id)} data-shirt-link data-astro-prefetch="hover">
-                        {/*
-                          Static name on purpose: on back-navigation from a detail page (no click
-                          happened here) the browser needs a pre-rendered target to morph into.
-                          Featured's copies only carry `data-vt`; home.ts moves the name to the
-                          clicked element and sets `none` on the others, so it's never duplicated.
-                        */}
-                        <span class="visual" data-vt={vt} style={`view-transition-name: ${vt}`}>
-                          <ShirtFace
-                            shirt={entry.data}
-                            uid={`sez-${entry.id}`}
-                            sizes={stop.shirts.length === 1 ? sizesOne : sizesTwo}
-                          />
-                        </span>
-                        <span class="caption">
-                          <span class="name">
-                            {lastName(entry.data.player)}
+                <div class="shots">
+                  {stop.shirts.map((entry) => {
+                    const vt = shirtTransitionName(entry.id);
+                    const href = shirtHref(entry.id);
+                    const { player, number, competition, match } = entry.data;
+                    const teaser = excerpt(entry);
+                    return (
+                      <article class="shot">
+                        {/* Pointer shortcut only – the card's link below is the one in the tab order. */}
+                        <a
+                          class="figure"
+                          href={href}
+                          tabindex="-1"
+                          aria-hidden="true"
+                          data-shirt-link
+                          data-astro-prefetch="hover"
+                        >
+                          {/*
+                            Static name on purpose: on back-navigation from a detail page (no click
+                            happened here) the browser needs a pre-rendered target to morph into.
+                            Featured's copies only carry `data-vt`; home.ts moves the name to the
+                            clicked element and sets `none` on the others, so it's never duplicated.
+                          */}
+                          <span class="visual" data-vt={vt} style={`view-transition-name: ${vt}`}>
+                            <ShirtFace
+                              shirt={entry.data}
+                              uid={`sez-${entry.id}`}
+                              sizes={many ? sizesTwo : sizesOne}
+                            />
+                          </span>
+                        </a>
+                        <div class="card">
+                          <h4 class="name">
+                            {lastName(player)}
                             <span class="num">
                               <span class="visually-hidden">{strings.number} </span>
-                              {entry.data.number}
+                              {number}
                             </span>
-                          </span>
-                          <span class="fact">{fact(entry)}</span>
-                          <span class="visually-hidden">{entry.data.player} – {strings.open}</span>
-                        </span>
-                      </a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </li>
-          ))
+                          </h4>
+                          {many && competition && <p class="comp">{competition}</p>}
+                          {match?.pl && <p class="match">{match.pl}</p>}
+                          {teaser && <p class="story">{teaser}</p>}
+                          <a class="more" href={href} data-shirt-link data-astro-prefetch="hover">
+                            {/* No whitespace between the parts: the arrow stays glued to the last word. */}
+                            {strings.open}<span aria-hidden="true">&nbsp;→</span><span class="visually-hidden">: {player}</span>
+                          </a>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })
         }
       </ol>
     </div>
 
-    <p class="hint" aria-hidden="true">{strings.hint}</p>
+    <div class="foot">
+      <ol class="dots" role="list" aria-hidden="true">
+        {stops.map((_, i) => <li data-stop-dot={i} />)}
+      </ol>
+      {/* Prev/next: home.ts wires them (and keeps aria-disabled in sync); hidden without JS like the chips. */}
+      <div class="steps">
+        <button type="button" class="step" data-step="-1" aria-disabled="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
+          <span class="visually-hidden">{strings.prev}</span>
+        </button>
+        <button type="button" class="step" data-step="1" aria-disabled="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+          <span class="visually-hidden">{strings.next}</span>
+        </button>
+      </div>
+      <p class="hint" aria-hidden="true">{strings.hint}</p>
+    </div>
+  </div>
+
+  {/* Pinned layout only: one invisible snap anchor per stop („magnet”, see the CSS below). */}
+  <div class="snaps" aria-hidden="true">
+    {stops.map((_, i) => <span style={`--i:${i}`} />)}
   </div>
 </section>
 
@@ -181,8 +267,8 @@ const fact = (entry: ShirtEntry): string => {
   .pin {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-    padding-block: 2rem 3rem;
+    gap: 1.25rem;
+    padding-block: 2rem 2.5rem;
   }
 
   .bar {
@@ -198,6 +284,11 @@ const fact = (entry: ShirtEntry): string => {
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--c-red);
+  }
+
+  /* Without JS the chips would be dead anchors (the pinned strip is clipped) – home.ts sets data-ready. */
+  .seasons:not([data-ready]) :is(.index, .steps) {
+    display: none;
   }
 
   .index ol {
@@ -231,16 +322,22 @@ const fact = (entry: ShirtEntry): string => {
     }
   }
 
-  .progress {
+  .progress,
+  .snaps {
     display: none;
   }
 
-  /* ── Base: native horizontal scroll-snap strip ── */
+  /* ── Base: native horizontal scroll-snap strip, stops centred ── */
   .strip {
+    /* offsetParent for home.ts (offsetLeft in scroll coordinates) + query container for the
+       track's centring padding (100cqi = the strip's real width, no scrollbar gutter). */
+    position: relative;
+    container-type: inline-size;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: inline mandatory;
-    scroll-padding-inline: var(--gutter);
+    /* A chip click scrolls the strip into view – keep its top clear of the floating header. */
+    scroll-margin-block-start: var(--hdr-space, 0px);
     scrollbar-width: none;
 
     &::-webkit-scrollbar {
@@ -248,45 +345,66 @@ const fact = (entry: ShirtEntry): string => {
     }
   }
 
+  /* Flex items stretch: every stop is as tall as the tallest one. The block-end padding keeps
+     the floor shadow inside the scroller (overflow-x: auto clips the block axis too). */
   .track {
     display: flex;
+    align-items: stretch;
     gap: var(--gap);
     inline-size: max-content;
     margin: 0;
-    padding: 0 var(--gutter);
+    padding: 0 max(var(--gutter), (100cqi - var(--stop-w)) / 2) 1.5rem;
     list-style: none;
   }
 
+  /* Year block on top, shirt(s) + caption fill the rest (1fr), so equal-height stops line up.
+     A query container too: the spread layout below sizes its columns against the stop. */
   .stop {
     position: relative;
     isolation: isolate;
+    container-type: inline-size;
     display: grid;
-    grid-template-rows: auto auto 1fr;
-    gap: 0.25rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 1.25rem;
     inline-size: var(--stop-w);
-    padding: 1rem 0 0;
+    padding-block-start: 1rem;
     border-block-start: 3px solid var(--c-red);
-    scroll-snap-align: start;
+    scroll-snap-align: center;
   }
 
-  .no {
+  /* Year block: its own query container, so the year is sized to always fit its column. */
+  .when {
+    container-type: inline-size;
+    display: grid;
+    justify-items: start;
+    gap: 0.6rem;
+  }
+
+  .no,
+  .comps {
     margin: 0;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     letter-spacing: 0.1em;
+    line-height: 1.4;
+    text-transform: uppercase;
     color: var(--c-navy);
   }
 
+  .comps {
+    color: var(--c-red);
+    text-wrap: balance;
+  }
+
+  /* Stacked block: big year, outlined „/09” tucked under its right edge. */
   .year {
-    position: relative;
-    z-index: -1;
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    column-gap: 0.06em;
+    display: grid;
+    justify-items: start;
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(5.5rem, 27vw, 8.5rem);
+    /* Widest content („70/80” at the 112% stretch peak) ≈ 3.2em → always fits the column. */
+    font-size: calc(100cqi / 3.3);
     font-weight: 900;
     font-stretch: 100%;
     line-height: 0.82;
@@ -296,10 +414,9 @@ const fact = (entry: ShirtEntry): string => {
   }
 
   .prefix {
-    flex-basis: 100%;
-    margin-block-end: 0.15em;
+    margin-block-end: 0.35rem;
     font-family: var(--font-mono);
-    font-size: max(var(--fs-sm), 0.14em);
+    font-size: var(--fs-sm);
     font-weight: 700;
     letter-spacing: 0.1em;
     line-height: 1;
@@ -307,80 +424,266 @@ const fact = (entry: ShirtEntry): string => {
   }
 
   .small {
+    justify-self: end;
+    margin-block-start: 0.06em;
     font-size: 0.42em;
     font-stretch: 75%;
+    line-height: 1;
     color: transparent;
     -webkit-text-stroke: 2px var(--c-red);
   }
 
-  .shirts {
+  /* Two rows shared by every shirt of the stop (subgrid): shirts centred in the free space,
+     captions on the bottom edge – aligned with each other and with the neighbouring stops. */
+  .shots {
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-    align-items: end;
-    margin: -1.75rem 0 0;
-    padding: 0;
-    list-style: none;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 1rem 0.75rem;
   }
 
-  .shirt-link {
+  .shot {
     display: grid;
-    gap: 0.6rem;
-    color: inherit;
-    text-decoration: none;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    gap: 1rem;
+  }
 
-    /* Single red ring: 5.4:1 on the white section, no ink halo needed. */
-    &:focus-visible {
-      outline-color: var(--c-red);
-      box-shadow: none;
+  /* No subgrid: each shirt is its own column – shirt centred in the free space, caption at the bottom. */
+  @supports not (grid-template-rows: subgrid) {
+    .shots {
+      grid-template-rows: minmax(0, 1fr);
     }
+
+    .shot {
+      display: flex;
+      flex-direction: column;
+      grid-row: auto;
+
+      & .figure {
+        margin-block: auto;
+      }
+    }
+
+    .stop[data-count='1'] .figure {
+      align-self: center;
+    }
+  }
+
+  .figure {
+    position: relative;
+    align-self: center;
+    display: block;
+    color: inherit;
+
+    /* Floor shadow the shirt stands on (outside the morphing visual on purpose). */
+    &::after {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset-inline: 10%;
+      inset-block-end: -3%;
+      block-size: 8%;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, rgb(5 15 26 / 0.3), transparent);
+    }
+  }
+
+  .stop[data-count='1'] .figure {
+    inline-size: 72%;
+    justify-self: center;
   }
 
   .visual {
     display: block;
     aspect-ratio: 5 / 6;
     inline-size: 100%;
-    filter: drop-shadow(0 1.2rem 1.2rem rgb(5 15 26 / 0.22));
+    filter: drop-shadow(0 1rem 1rem rgb(5 15 26 / 0.18));
     transition: transform var(--dur) var(--ease-out);
   }
 
-  .shirts[data-count='1'] .visual {
-    inline-size: 78%;
-    justify-self: center;
-  }
-
-  .caption {
-    display: grid;
-    gap: 0.2rem;
+  /* Flex column: the link sits on the bottom edge even when a sibling caption is taller. */
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-block-start: 0.75rem;
+    border-block-start: 1px solid rgb(5 15 26 / 0.14);
   }
 
   .name {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.4rem;
+    column-gap: 0.4rem;
+    margin: 0;
     font-family: var(--font-display);
     font-size: var(--fs-lg);
     font-weight: 900;
     font-stretch: 75%;
     line-height: 0.95;
     text-transform: uppercase;
+    overflow-wrap: anywhere;
   }
 
   .num {
     color: var(--c-red);
   }
 
-  .fact {
+  .comp,
+  .match {
+    margin: 0;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
-    line-height: 1.4;
+    line-height: 1.45;
+    text-wrap: balance;
+  }
+
+  .comp {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-red);
+  }
+
+  .match {
     color: var(--c-navy);
+  }
+
+  .story {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-size: var(--fs-sm);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: rgb(5 15 26 / 0.82);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  /* Two shirts side by side on a phone: no room for the story – the detail page has it. */
+  .stop:not([data-count='1']) .story {
+    display: none;
+  }
+
+  .more {
+    align-self: flex-start;
+    margin-block-start: auto;
+    padding-block: 0.5rem 0.3rem;
+    border-block-end: 1.5px solid currentColor;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-red);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+
+    &:hover {
+      color: var(--c-ink);
+    }
+  }
+
+  /* Narrow two-up captions: tighter tracking so the link label fits one line where it can. */
+  .stop:not([data-count='1']) .more {
+    letter-spacing: 0.02em;
+  }
+
+  /* Single red ring: 5.4:1 on the white section, no ink halo needed. */
+  .figure:focus-visible,
+  .more:focus-visible {
+    outline-color: var(--c-red);
+    box-shadow: none;
+  }
+
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    padding-inline: var(--gutter);
+  }
+
+  .dots {
+    display: flex;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      inline-size: 0.5rem;
+      block-size: 0.5rem;
+      border-radius: 0.25rem;
+      background: rgb(198 16 46 / 0.25);
+      transition:
+        inline-size var(--dur) var(--ease-out),
+        background-color var(--dur-fast);
+    }
+
+    & li[data-active] {
+      inline-size: 1.5rem;
+      background: var(--c-red);
+    }
+  }
+
+  /* Prev/next season: round red-outline buttons, filled on hover/focus (gold ring from base.css). */
+  .steps {
+    display: flex;
+    gap: 0.5rem;
+    margin-inline-start: auto;
+  }
+
+  .step {
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    padding: 0;
+    border: 1.5px solid var(--c-red);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--c-red);
+    cursor: pointer;
+    transition:
+      background-color var(--dur-fast),
+      color var(--dur-fast),
+      opacity var(--dur-fast);
+
+    & svg {
+      inline-size: 1.25rem;
+      block-size: 1.25rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: var(--c-red);
+      color: var(--c-white);
+    }
+
+    /* aria-disabled (not disabled): stays focusable, so focus isn't lost at the first/last stop. */
+    &[aria-disabled='true'] {
+      opacity: 0.35;
+      cursor: default;
+
+      &:hover {
+        background: transparent;
+        color: var(--c-red);
+      }
+    }
   }
 
   .hint {
     margin: 0;
-    padding-inline: var(--gutter);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     letter-spacing: 0.1em;
@@ -389,7 +692,7 @@ const fact = (entry: ShirtEntry): string => {
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .shirt-link:hover .visual {
+    .shot:hover .visual {
       transform: translateY(-3%) rotate(-2deg) scale(1.03);
     }
   }
@@ -401,46 +704,266 @@ const fact = (entry: ShirtEntry): string => {
     }
   }
 
-  @keyframes stretch {
+  /* ── ≥ 48rem strip: the two-column spread, one season per ~86% of the strip ──
+     (The pinned layout below overrides every property set here.) */
+  @media (min-width: 48rem) {
+    .seasons {
+      /* cqi resolves where it's used: the track and the stops – both measure the strip. */
+      --stop-w: min(86cqi, 88rem);
+      --gap: clamp(1rem, 2vw, 2rem);
+    }
+
+    .stop {
+      grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 1.5rem clamp(1.5rem, 4cqi, 4rem);
+      padding-block-start: 1.25rem;
+    }
+
+    .when {
+      grid-area: 1 / 1;
+      align-self: start;
+    }
+
+    .year {
+      /* Fits the column („70/80” ≈ 3.2em) and the viewport height. */
+      font-size: min(100cqi / 3.3, 17svh);
+    }
+
+    /* One shirt: year top-left, caption bottom-left, shirt alone in the right column.
+       .shots/.shot are subgrids so the card and the visual can sit in different columns
+       while staying inside one <article> (the morph finds the visual via closest('article')). */
+    .stop[data-count='1'] .shots,
+    .stop[data-count='1'] .shot {
+      grid-area: 1 / 1 / -1 / -1;
+      grid-template-columns: subgrid;
+      grid-template-rows: subgrid;
+      gap: inherit;
+      pointer-events: none;
+    }
+
+    .stop[data-count='1'] .figure {
+      grid-area: 1 / 2 / -1 / 3;
+      justify-self: center;
+      /* 46svh tall (5:6 visual → width = height × 5/6). */
+      inline-size: min(100%, 46svh * 5 / 6);
+      pointer-events: auto;
+    }
+
+    .stop[data-count='1'] .card {
+      grid-area: 2 / 1;
+      align-self: end;
+      max-inline-size: 30rem;
+      pointer-events: auto;
+    }
+
+    .stop[data-count='1'] .name {
+      font-size: clamp(1.75rem, 1rem + 1.6vw, 3rem);
+    }
+
+    /* Two shirts: a narrower year column, both shirts with their captions on the right.
+       :where() keeps the specificity of a plain .stop, so the pinned layout still overrides it. */
+    .stop:where(:not([data-count='1'])) {
+      grid-template-columns: minmax(0, 36fr) minmax(0, 64fr);
+    }
+
+    .stop:not([data-count='1']) .when {
+      grid-row: 1 / -1;
+    }
+
+    .stop:not([data-count='1']) .shots {
+      grid-area: 1 / 2 / -1 / 3;
+      column-gap: clamp(1rem, 3cqi, 2.5rem);
+    }
+
+    .stop:not([data-count='1']) .figure {
+      justify-self: center;
+      inline-size: min(100%, 30svh);
+    }
+
+    .stop:not([data-count='1']) .story {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+  }
+
+  /* Rests at the 112% peak through the middle third of a pass, so a parked year never moves. */
+  @keyframes seasons-stretch {
     0%,
     100% {
       font-stretch: 62%;
     }
-    50% {
-      font-stretch: 125%;
+    42%,
+    58% {
+      font-stretch: 112%;
     }
   }
 
-  @keyframes settle {
+  @keyframes seasons-settle {
     0%,
     100% {
       opacity: 0.55;
-      transform: scale(0.9);
+      scale: 0.9;
     }
-    50% {
+    40%,
+    60% {
       opacity: 1;
-      transform: none;
+      scale: 1;
     }
   }
 
-  @keyframes travel {
+  @keyframes seasons-travel {
     to {
       translate: calc((var(--stops) - 1) * var(--stop-w) * -1) 0;
     }
   }
 
-  @keyframes drift {
-    from {
-      translate: 9vw 0;
+  /* Parallax against the year: shirts arrive late from the right and lag behind when leaving –
+     always moving away from the year block, so they never slide over its digits. */
+  @keyframes seasons-shirt-pass {
+    0% {
+      translate: 16vw 2svh;
+      scale: 0.8;
       rotate: 5deg;
     }
-    to {
-      translate: -9vw 0;
-      rotate: -5deg;
+    38%,
+    62% {
+      translate: 0 0;
+      scale: 1;
+      rotate: 0deg;
+    }
+    100% {
+      translate: 7vw 2svh;
+      scale: 0.88;
+      rotate: -4deg;
     }
   }
 
-  @keyframes grow {
+  @keyframes seasons-card-pass {
+    0% {
+      opacity: 0;
+      translate: 5vw 0;
+    }
+    38%,
+    62% {
+      opacity: 1;
+      translate: 0 0;
+    }
+    100% {
+      opacity: 0;
+      translate: 4vw 0;
+    }
+  }
+
+  /* Over a stop's pass (previous stop centred → this one → next one centred): fully shown while it
+     is the nearest stop (within half a stop of the centre), a faint hint once a neighbour is centred. */
+  @keyframes seasons-dim {
+    0%,
+    100% {
+      opacity: 0.15;
+    }
+    25%,
+    75% {
+      opacity: 1;
+    }
+  }
+
+  /* Edge stops only have half a pass (first: centred → next centred; last: previous centred → centred),
+     so their keyframes are the matching half of the full ones – all ranges stay within 0–100%. */
+  @keyframes seasons-dim-start {
+    0%,
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.15;
+    }
+  }
+
+  @keyframes seasons-dim-end {
+    0% {
+      opacity: 0.15;
+    }
+    50%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes seasons-stretch-start {
+    0%,
+    16% {
+      font-stretch: 112%;
+    }
+    100% {
+      font-stretch: 62%;
+    }
+  }
+
+  @keyframes seasons-stretch-end {
+    0% {
+      font-stretch: 62%;
+    }
+    84%,
+    100% {
+      font-stretch: 112%;
+    }
+  }
+
+  @keyframes seasons-shirt-pass-start {
+    0%,
+    24% {
+      translate: 0 0;
+      scale: 1;
+      rotate: 0deg;
+    }
+    100% {
+      translate: 7vw 2svh;
+      scale: 0.88;
+      rotate: -4deg;
+    }
+  }
+
+  @keyframes seasons-shirt-pass-end {
+    0% {
+      translate: 16vw 2svh;
+      scale: 0.8;
+      rotate: 5deg;
+    }
+    76%,
+    100% {
+      translate: 0 0;
+      scale: 1;
+      rotate: 0deg;
+    }
+  }
+
+  @keyframes seasons-card-pass-start {
+    0%,
+    24% {
+      opacity: 1;
+      translate: 0 0;
+    }
+    100% {
+      opacity: 0;
+      translate: 4vw 0;
+    }
+  }
+
+  @keyframes seasons-card-pass-end {
+    0% {
+      opacity: 0;
+      translate: 5vw 0;
+    }
+    76%,
+    100% {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @keyframes seasons-grow {
     from {
       transform: scaleX(0);
     }
@@ -450,25 +973,25 @@ const fact = (entry: ShirtEntry): string => {
     /* Strip: each year stretches wide as it crosses the middle of the strip. */
     @supports (animation-timeline: view()) {
       .year {
-        animation: stretch linear both;
+        animation: seasons-stretch linear both;
         animation-timeline: view(inline);
         animation-range: cover 0% cover 100%;
       }
 
-      .shirts {
-        animation: settle linear both;
+      .shots {
+        animation: seasons-settle linear both;
         animation-timeline: view(inline);
         animation-range: cover 0% cover 100%;
       }
     }
   }
 
-  /* ── Desktop: pinned, scroll-driven horizontal travel ── */
+  /* ── Desktop: pinned, scroll-driven horizontal travel; one spread per viewport ── */
   @media (min-width: 64rem) and (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
+    @supports (animation-timeline: view()) and (view-timeline: --t block) and (animation-range: contain 0% contain 100%) and (grid-template-rows: subgrid) {
       .seasons {
         --pinned: 1;
-        --stop-w: 62vw;
+        --stop-w: 90vw;
         --gap: 0px;
         block-size: calc(100svh + (var(--stops) - 1) * var(--stop-w));
         view-timeline: --seasons block;
@@ -478,16 +1001,22 @@ const fact = (entry: ShirtEntry): string => {
         position: sticky;
         inset-block-start: 0;
         block-size: 100svh;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto minmax(0, 1fr);
         gap: 0;
-        padding-block: 5.5rem 1.5rem;
+        /* Clears the floating site header (it comes back on scroll-up). */
+        padding-block: var(--hdr-space) 0;
         overflow: clip;
       }
 
       .bar {
+        grid-area: 1 / 1;
         grid-template-columns: auto 1fr;
+        /* First row at least the arrows' height, so they line up with the chips (see .steps). */
+        grid-template-rows: minmax(2.75rem, auto);
         align-items: center;
-        column-gap: 2rem;
+        gap: 0.75rem 2rem;
+        /* Room for the prev/next arrows at its right end (see .steps below). */
+        padding-inline-end: calc(var(--gutter) + 6.5rem);
       }
 
       .progress {
@@ -501,93 +1030,245 @@ const fact = (entry: ShirtEntry): string => {
           block-size: 100%;
           background: var(--c-red);
           transform-origin: left;
-          animation: grow linear both;
+          animation: seasons-grow linear both;
           animation-timeline: --seasons;
           animation-range: contain 0% contain 100%;
         }
       }
 
       .strip {
-        /* Query container for the track's centring: 100cqi = the strip's real width,
-           without the scrollbar gutter that 100vw would include. */
-        container-type: inline-size;
+        grid-row: 2;
         overflow: clip;
         scroll-snap-type: none;
-        display: grid;
-        align-items: center;
+        /* Only a faint fade of the neighbours at the edges – no hard rules, no half years. */
+        mask-image: linear-gradient(90deg, transparent, #000 5vw, #000 calc(100% - 5vw), transparent);
       }
 
       .track {
+        block-size: 100%;
+        padding-block: 0;
         padding-inline: calc((100cqi - var(--stop-w)) / 2);
-        animation: travel linear both;
+        animation: seasons-travel linear both;
         animation-timeline: --seasons;
         animation-range: contain 0% contain 100%;
       }
 
       .stop {
-        grid-template-rows: auto 1fr;
-        grid-template-columns: 1fr;
-        align-items: center;
-        min-block-size: 62svh;
-        padding: 1.25rem 3vw 0;
+        /* A stop's pass: from the previous stop's centre to the next one's – the same --i / (--stops − 1)
+           as the track's translate, so the stop is centred exactly at 50% of its range. The first/last
+           stops get half passes + half keyframes below (no out-of-range offsets: WebKit clamps them).
+           max(…, 1) guards --stops: 1. */
+        --span: max(var(--stops) - 1, 1);
+        --range:
+          contain calc((var(--i) - 1) / var(--span) * 100%)
+          contain calc((var(--i) + 1) / var(--span) * 100%);
+        grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+        grid-template-rows: auto auto;
+        /* safe: on short viewports overflow goes to the bottom, never cutting the year's top. */
+        align-content: safe center;
+        align-items: start;
+        gap: 2.25rem 0;
+        block-size: 100%;
+        padding: 1rem 4vw 2rem;
         border-block-start: 0;
-        border-inline-start: 3px solid var(--c-red);
+        /* The clipped strip is no scroll container here, so the stops would become (moving) snap
+           areas of the page itself – only the .snaps anchors may snap the root. */
+        scroll-snap-align: none;
+        animation: seasons-dim linear both;
+        animation-timeline: --seasons;
+        animation-range: var(--range);
       }
 
-      .no {
-        grid-row: 1;
+      /* Edge stops: centred at the very start/end of the timeline, so fully shown there. */
+      .stop:first-child {
+        --range: contain 0% contain calc(100% / var(--span));
+        animation-name: seasons-dim-start;
+
+        & .year {
+          animation-name: seasons-stretch-start;
+        }
+
+        & .figure {
+          animation-name: seasons-shirt-pass-start;
+        }
+
+        & .card {
+          animation-name: seasons-card-pass-start;
+        }
       }
 
-      /* Year sits behind the shirts, centred in the stop. */
+      .stop:last-child {
+        --range: contain calc((var(--span) - 1) / var(--span) * 100%) contain 100%;
+        animation-name: seasons-dim-end;
+
+        & .year {
+          animation-name: seasons-stretch-end;
+        }
+
+        & .figure {
+          animation-name: seasons-shirt-pass-end;
+        }
+
+        & .card {
+          animation-name: seasons-card-pass-end;
+        }
+      }
+
+      /* A single season never moves: no pass at all. */
+      .stop:only-child,
+      .stop:only-child :is(.year, .figure, .card) {
+        animation: none;
+      }
+
+      /* The right padding is the zone the shirts may overlap – the digits stay in the content box. */
+      .when {
+        grid-area: 1 / 1;
+        align-self: end;
+        gap: 1rem;
+        padding-inline-end: 3vw;
+      }
+
       .year {
-        grid-row: 2;
-        grid-column: 1;
-        justify-content: center;
+        font-size: min(100cqi / 3.3, 24svh);
+        animation: seasons-stretch linear both;
+        animation-timeline: --seasons;
+        animation-range: var(--range);
+      }
+
+      .shots {
+        position: relative;
+        z-index: 1;
+        animation: none;
+      }
+
+      .figure {
+        animation: seasons-shirt-pass linear both;
+        animation-timeline: --seasons;
+        animation-range: var(--range);
+      }
+
+      .card {
+        animation: seasons-card-pass linear both;
+        animation-timeline: --seasons;
+        animation-range: var(--range);
+      }
+
+      /* One shirt: card under the year (left), the cut-out alone in the right column.
+         .shots/.shot are subgrids so the card and the visual can sit in different columns
+         while staying inside one <article> (the morph finds the visual via closest('article')). */
+      .stop[data-count='1'] .shots,
+      .stop[data-count='1'] .shot {
+        grid-area: 1 / 1 / -1 / -1;
+        display: grid;
+        grid-template-columns: subgrid;
+        grid-template-rows: subgrid;
+        gap: inherit;
+        pointer-events: none;
+      }
+
+      .stop[data-count='1'] .figure {
+        grid-area: 1 / 2 / -1 / 3;
         align-self: center;
-        flex-wrap: nowrap;
-        font-size: min(14.5vw, 34svh);
-        text-align: center;
-        animation: stretch linear both;
-        animation-timeline: --seasons;
-        animation-range:
-          contain calc((var(--i) - 1) / (var(--stops) - 1) * 100%)
-          contain calc((var(--i) + 1) / (var(--stops) - 1) * 100%);
-      }
-
-      .prefix {
-        position: absolute;
-        inset-block-end: 100%;
-        inset-inline: 0;
-        text-align: center;
-      }
-
-      .shirts {
-        grid-row: 2;
-        grid-column: 1;
         justify-self: center;
-        inline-size: min(100%, var(--shirts-w, 44svh));
+        /* 56svh tall (5:6 visual → width = height × 5/6), may reach 3vw into the year's padding. */
+        inline-size: min(100% + 3vw, 56svh * 5 / 6);
+        margin-inline-start: -3vw;
+        pointer-events: auto;
+      }
+
+      .stop[data-count='1'] .card {
+        grid-area: 2 / 1;
+        align-self: start;
+        max-inline-size: min(100% - 3vw, 28rem);
+        pointer-events: auto;
+      }
+
+      .stop[data-count='1'] .name {
+        font-size: clamp(2rem, 1rem + 1.6vw, 3rem);
+      }
+
+      /* Two shirts side by side in the right column, each with its compact caption. */
+      .stop:not([data-count='1']) .when {
+        grid-row: 1 / -1;
+        align-self: center;
+      }
+
+      .stop:not([data-count='1']) .shots {
+        grid-area: 1 / 2 / -1 / 3;
+        align-self: center;
+        gap: 2.5vw;
+        margin-inline-start: -3vw;
+      }
+
+      .stop:not([data-count='1']) .figure {
+        inline-size: min(100%, 33svh);
+        justify-self: center;
+      }
+
+      .stop:not([data-count='1']) .story {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+      }
+
+      /* The foot's dots/hint give way to the progress bar; its arrows move up to the bar's right end
+         (display: contents lifts them into the stage grid, row 1 – the bar keeps room for them). */
+      .foot {
+        display: contents;
+
+        & .dots,
+        & .hint {
+          display: none;
+        }
+      }
+
+      .steps {
+        grid-area: 1 / 1;
+        align-self: start;
+        justify-self: end;
         margin: 0;
-        animation: drift linear both;
-        animation-timeline: --seasons;
-        animation-range:
-          contain calc((var(--i) - 1) / (var(--stops) - 1) * 100%)
-          contain calc((var(--i) + 1) / (var(--stops) - 1) * 100%);
+        padding-inline-end: var(--gutter);
       }
 
-      .shirts[data-count='1'] {
-        --shirts-w: 44svh;
+      /* „Magnet”: zero-height snap anchors at the page-scroll offsets where each stop is centred
+         (section top + i × --stop-w – the same math as show() in home.ts; 1px of scroll = 1px of
+         travel). Outside the sticky stage, so they scroll with the tall section. No [id]: base.css's
+         header scroll-margin must not apply – the anchors align with the viewport top exactly, and the
+         root has no scroll-padding (the stage clears the floating header with its own padding). */
+      .snaps {
+        position: absolute;
+        inset: 0;
+        display: block;
+        pointer-events: none;
+
+        & span {
+          position: absolute;
+          inset-block-start: calc(var(--i) * var(--stop-w));
+          inset-inline: 0;
+          block-size: 0;
+          scroll-snap-align: start;
+          scroll-margin: 0;
+        }
       }
 
-      .shirts:not([data-count='1']) {
-        --shirts-w: 66svh;
+      /* Proximity (never mandatory) and only while the viewport is within the pinned range – home.ts
+         sets data-snap there, so stopping just above/below the section never pulls back into it. */
+      :global(html:has([data-seasons][data-snap])) {
+        scroll-snap-type: y proximity;
+        scroll-padding-block: 0;
       }
+    }
+  }
 
-      .shirts[data-count='1'] .visual {
-        inline-size: 82%;
-      }
-
-      .hint {
+  /* Short landscape screens (e.g. 1280×720, 1024×600): drop the teaser so the spread fits. */
+  @media (min-width: 64rem) and (max-height: 46rem) and (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) and (view-timeline: --t block) and (animation-range: contain 0% contain 100%) and (grid-template-rows: subgrid) {
+      .stop .card .story {
         display: none;
+      }
+
+      .stop {
+        row-gap: 1.25rem;
       }
     }
   }

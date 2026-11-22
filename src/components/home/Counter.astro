@@ -124,7 +124,7 @@ const ghost = '8'.repeat(String(count).length);
     }
   }
 
-  @keyframes rise {
+  @keyframes counter-rise {
     from {
       clip-path: inset(100% 0 0 0);
     }
@@ -140,7 +140,7 @@ const ghost = '8'.repeat(String(count).length);
       }
 
       .fill {
-        animation: rise linear both;
+        animation: counter-rise linear both;
         animation-timeline: view();
         animation-range: cover 30% cover 55%;
       }
@@ -162,7 +162,7 @@ const ghost = '8'.repeat(String(count).length);
         }
 
         .num.is-in .fill {
-          animation: rise 900ms var(--ease-out) 1500ms both;
+          animation: counter-rise 900ms var(--ease-out) 1500ms both;
         }
       }
     }

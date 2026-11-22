@@ -260,7 +260,7 @@ const sub = strings.sub
     }
   }
 
-  @keyframes stretch {
+  @keyframes szatnia-stretch {
     from {
       font-stretch: 62%;
     }
@@ -269,7 +269,7 @@ const sub = strings.sub
     }
   }
 
-  @keyframes sash-in {
+  @keyframes szatnia-sash-in {
     from {
       scale: 0 1;
     }
@@ -278,13 +278,13 @@ const sub = strings.sub
   @media (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .title {
-        animation: stretch linear both;
+        animation: szatnia-stretch linear both;
         animation-timeline: view();
         animation-range: entry 10% cover 50%;
       }
 
       .sash {
-        animation: sash-in linear both;
+        animation: szatnia-sash-in linear both;
         animation-timeline: view();
         animation-range: entry 0% cover 40%;
       }
