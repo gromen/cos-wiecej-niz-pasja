@@ -60,10 +60,7 @@ const hasBack = !data.draft;
 const isPhoto = Boolean(front);
 /** Touch screens have no hover: a small button flips photo cards to the back. */
 const canFlip = Boolean(front && back);
-const source = isPhoto ? strings.photo : strings.illustration;
-/** Tag in the locker: the source for described shirts, „do uzupełnienia” for placeholders. */
-const tag = data.draft ? strings.draft : source;
-const srLabel = [fullName, `${strings.number} ${data.number}`, source.toLowerCase(), data.draft && strings.draft]
+const srLabel = [fullName, `${strings.number} ${data.number}`, data.draft && strings.draft]
   .filter(Boolean)
   .join(', ');
 // The shirt is ~76% of the card; grid: 2 → 3 → 4 → 5 columns.
@@ -162,7 +159,7 @@ const loading = eager || priority ? 'eager' : 'lazy';
           </svg>
         )
       }
-      <span class={`card__tag card__tag--${isPhoto ? 'photo' : 'art'}`} aria-hidden="true">{tag}</span>
+      {data.draft && <span class="card__tag" aria-hidden="true">{strings.draft}</span>}
     </div>
 
     <div class="card__body">
@@ -374,31 +371,22 @@ const loading = eager || priority ? 'eager' : 'lazy';
     filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.4));
   }
 
-  /* Tag in the locker's bottom-left corner: real photo / illustration / „do uzupełnienia”. */
+  /* „Do uzupełnienia” tag in the locker's bottom-left corner (placeholders only). */
   .card__tag {
     position: absolute;
     inset-block-end: 4cqi;
     inset-inline-start: 4cqi;
     max-inline-size: calc(100% - 8cqi - 2.75rem);
     padding: 0.18rem 0.4rem 0.12rem;
+    border: 1px dashed var(--line-strong);
     border-radius: 2px;
+    color: var(--c-white);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     letter-spacing: 0.06em;
     line-height: 1.3;
     text-transform: uppercase;
     pointer-events: none;
-  }
-
-  .card__tag--photo {
-    background: rgb(250 250 250 / 0.94);
-    color: var(--c-red-deep);
-    font-weight: 700;
-  }
-
-  .card__tag--art {
-    border: 1px dashed var(--line-strong);
-    color: var(--c-white);
   }
 
   /* Touch flip affordance – on the recess's bottom-right corner (cell bottom, in card units). */

@@ -77,9 +77,6 @@ export interface CollectionStrings {
     unknownSeason: string;
     unknownPlayer: string;
     unknownPlayerFull: string;
-    /** Source badge: real cut-out photo vs. SVG placeholder. */
-    photo: string;
-    illustration: string;
     /** Flip affordance on touch screens (state carried by aria-pressed). */
     flip: string;
   };

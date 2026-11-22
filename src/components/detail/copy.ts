@@ -23,7 +23,6 @@ export const ui = {
     /** Magnifier toggle (constant name; state in aria-pressed). */
     lens: 'Lupa',
     lensHelp: 'Włącza lupę: strzałki ją przesuwają, Esc lub ponowne naciśnięcie wyłącza. Na ekranie dotykowym przeciągnij palcem po koszulce.',
-    realPhoto: 'Prawdziwe zdjęcie',
 
     originalsTitle: 'Zdjęcia oryginalne',
     originalsLead: 'Nieretuszowane zdjęcia z posta na Instagramie – tak ta koszulka wygląda naprawdę.',
