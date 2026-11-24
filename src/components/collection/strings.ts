@@ -42,8 +42,6 @@ export interface CollectionStrings {
     region: string;
     search: string;
     searchPlaceholder: string;
-    open: string;
-    sheetTitle: string;
     close: string;
     reset: string;
     groups: { era: string; kind: string; color: string; status: string; options: string };
